@@ -27,3 +27,24 @@ yarn-error.log*
 next-env.d.ts
 
 demoaccounts.txt
+
+# Ignore common document and image file types everywhere
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.svg
+*.bmp
+*.webp
+*.ico
+*.pdf
+*.doc
+*.docx
+*.ppt
+*.pptx
+*.xls
+*.xlsx
+*.zip
+*.rar
+*.tar
+*.gz
