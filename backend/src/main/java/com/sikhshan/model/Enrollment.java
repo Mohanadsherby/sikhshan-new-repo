@@ -1,6 +1,7 @@
 package com.sikhshan.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDate;
 
 @Entity
 public class Enrollment {
@@ -16,6 +17,8 @@ public class Enrollment {
     @JoinColumn(name = "course_id")
     private Course course;
 
+    private LocalDate enrollmentDate;
+    private String status;
     private Integer progress;
     private String grade;
 
@@ -27,6 +30,12 @@ public class Enrollment {
 
     public Course getCourse() { return course; }
     public void setCourse(Course course) { this.course = course; }
+
+    public LocalDate getEnrollmentDate() { return enrollmentDate; }
+    public void setEnrollmentDate(LocalDate enrollmentDate) { this.enrollmentDate = enrollmentDate; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
     public Integer getProgress() { return progress; }
     public void setProgress(Integer progress) { this.progress = progress; }
