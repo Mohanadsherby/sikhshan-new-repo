@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import { Link } from "react-router-dom"
-import { getCoursesByInstructor, createCourse, uploadCourseImage } from '../../api/courseApi';
+import { getCoursesByInstructor, createCourse, uploadCourseImage, deleteCourse } from '../../api/courseApi';
 
 // Helper to format date
 const formatDate = (dateStr) => {
@@ -135,6 +135,18 @@ function CourseListFaculty() {
       setSubmitting(false);
     }
   }
+
+  const handleDeleteCourse = async (courseId) => {
+    if (!window.confirm("Are you sure you want to delete this course? This action cannot be undone.")) return;
+    try {
+      await deleteCourse(courseId);
+      setCourses(prev => prev.filter(c => c.id !== courseId));
+      setSelectedCourse(null);
+    } catch (err) {
+      setError("Failed to delete course. " + (err.response?.data || ""));
+      console.error("Error deleting course:", err);
+    }
+  };
 
   if (loading) {
     return (
@@ -308,13 +320,21 @@ function CourseListFaculty() {
                     className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-dark"
                   />
                   {selectedImage && (
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="h-16 w-16 rounded-lg object-cover"
-                    />
+                    <div className="flex items-center space-x-2">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="h-16 w-16 rounded-lg object-cover"
+                      />
+                      <span className="text-sm text-green-600">✓ Image selected</span>
+                    </div>
                   )}
                 </div>
+                {selectedImage && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Selected: {selectedImage.name}
+                  </p>
+                )}
               </div>
 
               {/* Submit Button */}
@@ -478,6 +498,12 @@ function CourseListFaculty() {
                   >
                     Edit Course
                   </Link>
+                  <button
+                    onClick={() => handleDeleteCourse(selectedCourse.id)}
+                    className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 block text-center"
+                  >
+                    Delete Course
+                  </button>
                 </div>
               </div>
             ) : (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { getCourseById, getCourseAttachments, uploadCourseAttachment, deleteCourseAttachment } from "../../api/courseApi";
+import { getCourseById, getCourseAttachments, uploadCourseAttachment, deleteCourseAttachment, deleteCourse } from "../../api/courseApi";
 
 // Helper to format date
 const formatDate = (dateStr) => {
@@ -128,6 +128,17 @@ function CourseDetailFaculty() {
     } catch (err) {
       setError("Failed to delete file.");
       console.error("Error deleting file:", err);
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!window.confirm("Are you sure you want to delete this course? This action cannot be undone.")) return;
+    try {
+      await deleteCourse(courseId);
+      navigate('/faculty/courses', { state: { success: "Course deleted successfully!" } });
+    } catch (err) {
+      setError("Failed to delete course. " + (err.response?.data || ""));
+      console.error("Error deleting course:", err);
     }
   };
 
@@ -338,14 +349,17 @@ function CourseDetailFaculty() {
             <p className="text-gray-600">{course.code}</p>
           </div>
         </div>
-        <div className="flex space-x-3 mt-4 md:mt-0">
+        <div className="flex flex-col space-y-2 mt-4 md:mt-0">
           <Link
             to={`/faculty/courses/${courseId}/edit`}
-            className="px-4 py-2 border border-primary text-primary rounded-md hover:bg-primary-50"
+            className="px-4 py-2 border border-primary text-primary rounded-md hover:bg-primary-50 text-center"
           >
             Edit Course
           </Link>
-          <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+          <button
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            onClick={handleDeleteCourse}
+          >
             Delete Course
           </button>
         </div>
