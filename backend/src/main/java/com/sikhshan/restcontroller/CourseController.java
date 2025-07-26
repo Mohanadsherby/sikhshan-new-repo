@@ -149,12 +149,26 @@ public class CourseController {
 	// Delete Course
 	@DeleteMapping("/{id}")
 	public ResponseEntity<?> deleteCourse(@PathVariable Long id) {
-		Optional<Course> courseOpt = courseRepository.findById(id);
-		if (courseOpt.isPresent()) {
+		try {
+			Optional<Course> courseOpt = courseRepository.findById(id);
+			if (courseOpt.isEmpty()) {
+				return ResponseEntity.status(404).body("Course not found with id: " + id);
+			}
+			
+			Course course = courseOpt.get();
+			
+			// Delete related enrollments first
+			List<Enrollment> enrollments = enrollmentRepository.findByCourseId(id);
+			if (!enrollments.isEmpty()) {
+				enrollmentRepository.deleteAll(enrollments);
+			}
+			
+			// Now delete the course
 			courseRepository.deleteById(id);
 			return ResponseEntity.ok("Course deleted successfully");
-		} else {
-			return ResponseEntity.status(404).body("Course not found with id: " + id);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.status(500).body("Error deleting course: " + e.getMessage());
 		}
 	}
 
