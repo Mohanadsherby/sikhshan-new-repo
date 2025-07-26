@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import { Link } from "react-router-dom"
-import { getCoursesByInstructor, createCourse } from '../../api/courseApi';
+import { getCoursesByInstructor, createCourse, uploadCourseImage } from '../../api/courseApi';
 
 // Helper to format date
 const formatDate = (dateStr) => {
@@ -35,6 +35,8 @@ function CourseListFaculty() {
     credits: "",
     status: "ACTIVE"
   });
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -68,6 +70,18 @@ function CourseListFaculty() {
     })
   }
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitting(true);
@@ -80,8 +94,25 @@ function CourseListFaculty() {
         credits: parseInt(formData.credits) || 0
       };
       
+      // Create course first
       const res = await createCourse(courseData);
-      setCourses(prev => [res.data, ...prev]);
+      const createdCourse = res.data;
+      
+      // Upload image if selected
+      if (selectedImage) {
+        try {
+          const formData = new FormData();
+          formData.append('file', selectedImage);
+          const imageRes = await uploadCourseImage(createdCourse.id, formData);
+          // Update the course with the new image URL
+          createdCourse.imageUrl = imageRes.data.imageUrl;
+        } catch (imageErr) {
+          console.error("Error uploading image:", imageErr);
+          // Don't fail the entire operation if image upload fails
+        }
+      }
+      
+      setCourses(prev => [createdCourse, ...prev]);
       
       // Reset form and return to list view
       setFormData({
@@ -94,6 +125,8 @@ function CourseListFaculty() {
         credits: "",
         status: "ACTIVE"
       });
+      setSelectedImage(null);
+      setImagePreview(null);
       setIsCreating(false);
     } catch (err) {
       setError(err.response?.data || "Failed to create course.");
@@ -258,6 +291,30 @@ function CourseListFaculty() {
                   rows="4"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
                 ></textarea>
+              </div>
+
+              {/* Image Upload */}
+              <div className="col-span-2">
+                <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">
+                  Course Image
+                </label>
+                <div className="flex items-center space-x-4">
+                  <input
+                    type="file"
+                    id="image"
+                    name="image"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-dark"
+                  />
+                  {selectedImage && (
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="h-16 w-16 rounded-lg object-cover"
+                    />
+                  )}
+                </div>
               </div>
 
               {/* Submit Button */}
