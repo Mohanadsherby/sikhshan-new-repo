@@ -1,9 +1,9 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Link } from "react-router-dom"
 import { useAuth } from "../../contexts/AuthContext"
-import { getCoursesByStudent, unenrollFromCourse } from '../../api/courseApi';
+import { Link } from "react-router-dom"
+import { getCoursesByStudent, unenrollFromCourse, getAvailableCoursesForStudent, enrollInCourse } from '../../api/courseApi';
 
 // Helper to format date
 const formatDate = (dateStr) => {
@@ -13,42 +13,48 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString();
 };
 
+// Helper to get course image URL
+const getCourseImageUrl = (imageUrl) => {
+  if (!imageUrl) return "/placeholder.jpg";
+  if (imageUrl.startsWith('http')) return imageUrl;
+  return process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081' + imageUrl;
+};
+
 function CourseListStudent() {
   const { currentUser } = useAuth();
   const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const [availableCourses, setAvailableCourses] = useState([]);
+  const [previousCourses, setPreviousCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [activeTab, setActiveTab] = useState("enrolled");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [showUnenrollModal, setShowUnenrollModal] = useState(false);
   const [unenrolling, setUnenrolling] = useState(false);
-  const [unenrollSuccess, setUnenrollSuccess] = useState("");
-  // Add previousCourses state (TODO: fetch from API)
-  const [previousCourses, setPreviousCourses] = useState([]); // TODO: fetch from API
-
-  const handleUnenroll = async () => {
-    setUnenrolling(true);
-    try {
-      await unenrollFromCourse(selectedCourse.id);
-      setEnrolledCourses((prev) => prev.filter((c) => c.id !== selectedCourse.id));
-      setSelectedCourse(null);
-      setUnenrollSuccess("You have been unenrolled from the course.");
-    } catch (err) {
-      setError("Failed to unenroll. Please try again.");
-    } finally {
-      setUnenrolling(false);
-      setShowUnenrollModal(false);
-    }
-  };
+  const [showUnenrollModal, setShowUnenrollModal] = useState(false);
+  const [courseToUnenroll, setCourseToUnenroll] = useState(null);
+  const [enrolling, setEnrolling] = useState(false);
+  const [showEnrollModal, setShowEnrollModal] = useState(false);
+  const [courseToEnroll, setCourseToEnroll] = useState(null);
 
   useEffect(() => {
     const fetchCourses = async () => {
       setLoading(true);
       try {
-        const res = await getCoursesByStudent(currentUser.id);
-        setEnrolledCourses(res.data);
+        // Fetch enrolled courses
+        const enrolledRes = await getCoursesByStudent(currentUser.id);
+        setEnrolledCourses(enrolledRes.data);
+        
+        // Fetch available courses (not enrolled)
+        const availableRes = await getAvailableCoursesForStudent(currentUser.id);
+        setAvailableCourses(availableRes.data);
+        
+        // TODO: Fetch previous courses (completed)
+        // const previousRes = await getPreviousCourses(currentUser.id);
+        // setPreviousCourses(previousRes.data);
+        
       } catch (err) {
         setError("Failed to load courses.");
+        console.error("Error fetching courses:", err);
       } finally {
         setLoading(false);
       }
@@ -58,8 +64,59 @@ function CourseListStudent() {
 
   // Redirect if not student
   if (currentUser?.role !== "STUDENT") {
-    return <div className="text-center p-8">You don't have permission to view this page.</div>;
+    return <div className="text-center p-8">You don't have permission to view this page.</div>
   }
+
+  const handleUnenroll = async () => {
+    if (!courseToUnenroll) return;
+    
+    setUnenrolling(true);
+    try {
+      await unenrollFromCourse(courseToUnenroll.id, currentUser.id);
+      setEnrolledCourses(prev => prev.filter(c => c.id !== courseToUnenroll.id));
+      // Add the course back to available courses
+      setAvailableCourses(prev => [...prev, courseToUnenroll]);
+      setSelectedCourse(null);
+      setShowUnenrollModal(false);
+      setCourseToUnenroll(null);
+    } catch (err) {
+      setError("Failed to unenroll from course.");
+      console.error("Error unenrolling:", err);
+    } finally {
+      setUnenrolling(false);
+    }
+  };
+
+  const handleEnroll = async () => {
+    if (!courseToEnroll) return;
+    
+    setEnrolling(true);
+    try {
+      await enrollInCourse(courseToEnroll.id, currentUser.id);
+      setEnrolledCourses(prev => [...prev, courseToEnroll]);
+      // Remove the course from available courses
+      setAvailableCourses(prev => prev.filter(c => c.id !== courseToEnroll.id));
+      setSelectedCourse(null);
+      setShowEnrollModal(false);
+      setCourseToEnroll(null);
+    } catch (err) {
+      setError("Failed to enroll in course.");
+      console.error("Error enrolling:", err);
+    } finally {
+      setEnrolling(false);
+    }
+  };
+
+  const confirmUnenroll = (course) => {
+    setCourseToUnenroll(course);
+    setShowUnenrollModal(true);
+  };
+
+  const confirmEnroll = (course) => {
+    setCourseToEnroll(course);
+    setShowEnrollModal(true);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -67,292 +124,425 @@ function CourseListStudent() {
       </div>
     );
   }
-  if (error) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-red-100 text-red-800 p-4 rounded mb-4">{error}</div>
-      </div>
-    );
-  }
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">My Courses</h1>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-800">My Courses</h1>
+      </div>
+
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200 mb-6">
-        <button
-          className={`py-2 px-4 text-sm font-medium ${
-            activeTab === "enrolled" ? "border-b-2 border-primary text-primary" : "text-gray-500 hover:text-gray-700"
-          }`}
-          onClick={() => setActiveTab("enrolled")}
-        >
-          Enrolled Courses
-        </button>
-        <button
-          className={`py-2 px-4 text-sm font-medium ${
-            activeTab === "available" ? "border-b-2 border-primary text-primary" : "text-gray-500 hover:text-gray-700"
-          }`}
-          onClick={() => setActiveTab("available")}
-        >
-          Available Courses
-        </button>
-        <button
-          className={`py-2 px-4 text-sm font-medium ${
-            activeTab === "previous" ? "border-b-2 border-primary text-primary" : "text-gray-500 hover:text-gray-700"
-          }`}
-          onClick={() => setActiveTab("previous")}
-        >
-          Previous Courses
-        </button>
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8">
+          {[
+            { id: "enrolled", label: "Enrolled Courses", count: enrolledCourses.length },
+            { id: "available", label: "Available Courses", count: availableCourses.length },
+            { id: "previous", label: "Previous Courses", count: previousCourses.length }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === tab.id
+                  ? "border-primary text-primary"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              {tab.label} ({tab.count})
+            </button>
+          ))}
+        </nav>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Course List and Details */}
-        {activeTab === "previous" ? (
-          <div className="lg:col-span-3">
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Instructor</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credits</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {previousCourses.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-4 text-center text-gray-500">No previous courses found.</td>
-                      </tr>
-                    ) : (
-                      previousCourses.map((course) => (
-                        <tr key={course.id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{course.title}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.semester}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.instructor}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.credits}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.grade}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{course.status}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+        {/* Course List */}
+        <div className="lg:col-span-2">
+          {activeTab === "enrolled" && (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 className="text-lg font-semibold text-gray-800">
+                  Enrolled Courses ({enrolledCourses.length})
+                </h2>
               </div>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="lg:col-span-2">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {activeTab === "enrolled"
-                  ? enrolledCourses.map((course) => (
-                      <div
-                        key={course.id}
-                        className={`bg-white rounded-xl shadow-md overflow-hidden transition-transform duration-300 hover:shadow-lg hover:-translate-y-1 cursor-pointer ${
-                          selectedCourse?.id === course.id ? "ring-2 ring-primary" : ""
-                        }`}
-                        onClick={() => setSelectedCourse(course)}
-                      >
-                        <div className="h-40 bg-cover bg-center" style={{ backgroundImage: `url(${course.image})` }}>
-                          <div className="h-full w-full bg-black bg-opacity-30 flex items-end p-4">
-                            <div>
-                              <span className="inline-block bg-primary text-white text-xs px-2 py-1 rounded-md mb-2">
-                                {course.code}
-                              </span>
-                              <h3 className="text-lg font-bold text-white">{course.name}</h3>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="p-4">
-                          <p className="text-sm text-gray-600">Instructor: {course.instructor}</p>
-                          <div className="mt-4">
-                            <div className="flex justify-between text-sm text-gray-600 mb-1">
-                              <span>Progress</span>
-                              <span>{course.progress}%</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                              <div className="bg-primary h-2 rounded-full" style={{ width: `${course.progress}%` }}></div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  : (
-                      <div className="bg-white shadow rounded-lg overflow-hidden lg:col-span-2">
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                              <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Credits</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                              {/* TODO: Fetch available courses from API */}
-                              <tr>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">No available courses found.</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    )}
-              </div>
-            </div>
-            {/* Course Details */}
-            {activeTab !== "previous" && (
-              <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                {selectedCourse ? (
-                  <div>
-                    <div className="h-48 bg-cover bg-center" style={{ backgroundImage: `url(${selectedCourse.image})` }}>
-                      <div className="h-full w-full bg-black bg-opacity-50 flex items-center justify-center">
-                        <div className="text-center text-white p-4">
-                          <span className="inline-block bg-primary text-white text-xs px-2 py-1 rounded-md mb-2">
-                            {selectedCourse.code}
-                          </span>
-                          <h2 className="text-2xl font-bold">{selectedCourse.name}</h2>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="p-6">
-                      <div className="space-y-4">
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Instructor</p>
-                          <p className="text-base text-gray-900">{selectedCourse.instructor}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Description</p>
-                          <p className="text-base text-gray-900">{selectedCourse.description}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-500">Duration</p>
-                          <p className="text-base text-gray-900">
-                            {selectedCourse.startDate} - {selectedCourse.endDate}
-                          </p>
-                        </div>
-                        {activeTab === "enrolled" && (
-                          <>
-                            <div>
-                              <p className="text-sm font-medium text-gray-500">Progress</p>
-                              <div className="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                                <div
-                                  className="bg-primary h-2.5 rounded-full"
-                                  style={{ width: `${selectedCourse.progress}%` }}
-                                ></div>
-                              </div>
-                              <span className="text-xs text-gray-500 mt-1">{selectedCourse.progress}% Complete</span>
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-500">Current Grade</p>
-                              <p className="text-base text-gray-900">{selectedCourse.grade}</p>
-                            </div>
-                          </>
-                        )}
-                        {activeTab === "available" && (
-                          <div>
-                            <p className="text-sm font-medium text-gray-500">Credits</p>
-                            <p className="text-base text-gray-900">{selectedCourse.credits}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="mt-6 space-y-3">
-                        {activeTab === "enrolled" ? (
-                          <>
-                            <Link to={`/student/courses/${selectedCourse.id}`} className="w-full py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors duration-200 block text-center">
-                              View Course Materials
-                            </Link>
-                            <button className="w-full py-2 border border-primary text-primary rounded-md hover:bg-primary-light/10 transition-colors duration-200">
-                              View Assignments
-                            </button>
-                            <button className="w-full py-2 border border-primary text-primary rounded-md hover:bg-primary-light/10 transition-colors duration-200">
-                              View Quizzes
-                            </button>
-                            {/* Unenroll Button */}
-                            <button
-                              className="w-full py-2 rounded-md text-white font-semibold bg-red-600 hover:bg-red-700 transition-colors duration-200 mt-2"
-                              onClick={() => setShowUnenrollModal(true)}
-                              disabled={unenrolling}
-                            >
-                              Unenroll
-                            </button>
-                            {unenrollSuccess && (
-                              <div className="text-green-600 font-semibold mt-2">{unenrollSuccess}</div>
-                            )}
-                          </>
-                        ) : (
-                          <button className="w-full py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors duration-200">
-                            Enroll in Course
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    {/* Unenroll Modal */}
-                    {showUnenrollModal && (
-                      <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-                        <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
-                          <h2 className="text-lg font-bold mb-2">Confirm Unenrollment</h2>
-                          <p className="mb-4">Are you sure you want to unenroll from <span className="font-semibold">{selectedCourse.name}</span>?</p>
-                          <div className="flex justify-end gap-2">
-                            <button
-                              className="px-4 py-2 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
-                              onClick={() => setShowUnenrollModal(false)}
-                              disabled={unenrolling}
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
-                              onClick={handleUnenroll}
-                              disabled={unenrolling}
-                            >
-                              {unenrolling ? "Unenrolling..." : "Confirm"}
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-full min-h-[400px]">
-                    <div className="text-center p-6">
-                      <div className="w-16 h-16 bg-primary bg-opacity-10 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-8 w-8 text-primary"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              {enrolledCourses.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  <p>You are not enrolled in any courses yet.</p>
+                  <p className="text-sm mt-2">Check available courses to get started!</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {enrolledCourses.map((course) => (
+                    <div
+                      key={course.id}
+                      className={`p-6 hover:bg-gray-50 cursor-pointer transition-colors ${selectedCourse?.id === course.id ? 'bg-primary-50' : ''}`}
+                      onClick={() => setSelectedCourse(course)}
+                    >
+                      <div className="flex items-start space-x-4">
+                        <div className="flex-shrink-0">
+                          <img
+                            src={getCourseImageUrl(course.imageUrl)}
+                            alt={course.name}
+                            className="h-16 w-16 rounded-lg object-cover"
                           />
-                        </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-medium text-gray-900 truncate">
+                              {course.name}
+                            </h3>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              course.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                              course.status === 'INACTIVE' ? 'bg-red-100 text-red-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {course.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {course.code} • {course.category || 'No category'} • {course.credits || 0} credits
+                          </p>
+                          <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                            {course.description || 'No description available'}
+                          </p>
+                          <div className="flex items-center justify-between mt-3">
+                            <p className="text-xs text-gray-400">
+                              Instructor: {course.instructor || 'Unknown'}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {course.startDate && course.endDate ? 
+                                `${formatDate(course.startDate)} - ${formatDate(course.endDate)}` : 
+                                'No dates set'
+                              }
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-gray-500 mb-2">Select a course to view details</p>
-                      <p className="text-sm text-gray-400">Click on any course card to see more information</p>
+                      
+                      {/* Action buttons */}
+                      <div className="flex flex-col gap-2 mt-4">
+                        <Link 
+                          to={`/student/courses/${course.id}`} 
+                          className="w-full py-2 rounded-md bg-blue-500 text-white font-semibold hover:bg-blue-600 transition-colors duration-200 block text-center"
+                        >
+                          View Course Materials
+                        </Link>
+                        <button
+                          className="w-full py-2 rounded-md bg-red-500 text-white font-semibold hover:bg-red-600 transition-colors duration-200"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            confirmUnenroll(course);
+                          }}
+                          disabled={unenrolling}
+                        >
+                          Unenroll
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "available" && (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 className="text-lg font-semibold text-gray-800">
+                  Available Courses ({availableCourses.length})
+                </h2>
+              </div>
+              {availableCourses.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  <p>No available courses found.</p>
+                  <p className="text-sm mt-2">Check back later for new courses!</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {availableCourses.map((course) => (
+                    <div
+                      key={course.id}
+                      className={`p-6 hover:bg-gray-50 cursor-pointer transition-colors ${selectedCourse?.id === course.id ? 'bg-primary-50' : ''}`}
+                      onClick={() => setSelectedCourse(course)}
+                    >
+                      <div className="flex items-start space-x-4">
+                        <div className="flex-shrink-0">
+                          <img
+                            src={getCourseImageUrl(course.imageUrl)}
+                            alt={course.name}
+                            className="h-16 w-16 rounded-lg object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-medium text-gray-900 truncate">
+                              {course.name}
+                            </h3>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              course.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                              course.status === 'INACTIVE' ? 'bg-red-100 text-red-800' :
+                              'bg-yellow-100 text-yellow-800'
+                            }`}>
+                              {course.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {course.code} • {course.category || 'No category'} • {course.credits || 0} credits
+                          </p>
+                          <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                            {course.description || 'No description available'}
+                          </p>
+                          <div className="flex items-center justify-between mt-3">
+                            <p className="text-xs text-gray-400">
+                              Instructor: {course.instructor || 'Unknown'}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {course.startDate && course.endDate ? 
+                                `${formatDate(course.startDate)} - ${formatDate(course.endDate)}` : 
+                                'No dates set'
+                              }
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Enroll button */}
+                      <div className="mt-4">
+                        <button
+                          className="w-full py-2 rounded-md bg-primary text-white font-semibold hover:bg-primary-dark transition-colors duration-200"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            confirmEnroll(course);
+                          }}
+                          disabled={enrolling}
+                        >
+                          Enroll in Course
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "previous" && (
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h2 className="text-lg font-semibold text-gray-800">
+                  Previous Courses ({previousCourses.length})
+                </h2>
+              </div>
+              {previousCourses.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">
+                  <p>No previous courses found.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {previousCourses.map((course) => (
+                    <div
+                      key={course.id}
+                      className={`p-6 hover:bg-gray-50 cursor-pointer transition-colors ${selectedCourse?.id === course.id ? 'bg-primary-50' : ''}`}
+                      onClick={() => setSelectedCourse(course)}
+                    >
+                      <div className="flex items-start space-x-4">
+                        <div className="flex-shrink-0">
+                          <img
+                            src={getCourseImageUrl(course.imageUrl)}
+                            alt={course.name}
+                            className="h-16 w-16 rounded-lg object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-medium text-gray-900 truncate">
+                              {course.name}
+                            </h3>
+                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                              Completed
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-1">
+                            {course.code} • {course.category || 'No category'} • {course.credits || 0} credits
+                          </p>
+                          <p className="text-sm text-gray-600 mt-2 line-clamp-2">
+                            {course.description || 'No description available'}
+                          </p>
+                          <div className="flex items-center justify-between mt-3">
+                            <p className="text-xs text-gray-400">
+                              Instructor: {course.instructor || 'Unknown'}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              Completed: {formatDate(course.completedDate)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Course Details */}
+        <div>
+          {selectedCourse ? (
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="mb-4">
+                <img
+                  src={getCourseImageUrl(selectedCourse.imageUrl)}
+                  alt={selectedCourse.name}
+                  className="w-full h-32 object-cover rounded-lg mb-4"
+                />
+                <h2 className="text-xl font-semibold text-gray-800 mb-2">{selectedCourse.name}</h2>
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                  selectedCourse.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                  selectedCourse.status === 'INACTIVE' ? 'bg-red-100 text-red-800' :
+                  'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {selectedCourse.status}
+                </span>
+              </div>
+              
+              <div className="space-y-4 mb-6">
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Course Code</p>
+                  <p className="text-base text-gray-900">{selectedCourse.code}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Category</p>
+                  <p className="text-base text-gray-900">{selectedCourse.category || 'No category'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Credits</p>
+                  <p className="text-base text-gray-900">{selectedCourse.credits || 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Instructor</p>
+                  <p className="text-base text-gray-900">{selectedCourse.instructor || 'Unknown'}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Duration</p>
+                  <p className="text-base text-gray-900">
+                    {selectedCourse.startDate && selectedCourse.endDate ? 
+                      `${formatDate(selectedCourse.startDate)} - ${formatDate(selectedCourse.endDate)}` : 
+                      'No dates set'
+                    }
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-500">Description</p>
+                  <p className="text-base text-gray-900">{selectedCourse.description || 'No description available'}</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {activeTab === "enrolled" && (
+                  <>
+                    <Link 
+                      to={`/student/courses/${selectedCourse.id}`} 
+                      className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark block text-center"
+                    >
+                      View Course Materials
+                    </Link>
+                    <button
+                      onClick={() => confirmUnenroll(selectedCourse)}
+                      className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                      disabled={unenrolling}
+                    >
+                      {unenrolling ? "Unenrolling..." : "Unenroll"}
+                    </button>
+                  </>
+                )}
+                {activeTab === "available" && (
+                  <button
+                    className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
+                    onClick={() => confirmEnroll(selectedCourse)}
+                    disabled={enrolling}
+                  >
+                    {enrolling ? "Enrolling..." : "Enroll in Course"}
+                  </button>
                 )}
               </div>
-            )}
-          </>
-        )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg shadow p-6 text-center">
+              <p className="text-gray-500">Select a course to view details</p>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Unenroll Confirmation Modal */}
+      {showUnenrollModal && courseToUnenroll && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Confirm Unenrollment</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to unenroll from <strong>{courseToUnenroll.name}</strong>? 
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowUnenrollModal(false);
+                  setCourseToUnenroll(null);
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                disabled={unenrolling}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUnenroll}
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                disabled={unenrolling}
+              >
+                {unenrolling ? "Unenrolling..." : "Unenroll"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enroll Confirmation Modal */}
+      {showEnrollModal && courseToEnroll && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Confirm Enrollment</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to enroll in <strong>{courseToEnroll.name}</strong>? 
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowEnrollModal(false);
+                  setCourseToEnroll(null);
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                disabled={enrolling}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEnroll}
+                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50"
+                disabled={enrolling}
+              >
+                {enrolling ? "Enrolling..." : "Enroll"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
