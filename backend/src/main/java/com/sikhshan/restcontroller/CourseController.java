@@ -176,43 +176,53 @@ public class CourseController {
 	// Enroll Student in Course
 	@PostMapping("/{courseId}/enroll")
 	public ResponseEntity<?> enrollStudentInCourse(@PathVariable Long courseId, @RequestBody EnrollmentRequest enrollmentRequest) {
-		Optional<Course> courseOpt = courseRepository.findById(courseId);
-		if (courseOpt.isEmpty()) {
-			return ResponseEntity.status(404).body("Course not found");
+		try {
+			Optional<Course> courseOpt = courseRepository.findById(courseId);
+			if (courseOpt.isEmpty()) {
+				return ResponseEntity.status(404).body("Course not found");
+			}
+
+			Optional<User> studentOpt = userRepository.findById(enrollmentRequest.getStudentId());
+			if (studentOpt.isEmpty() || !studentOpt.get().getRole().name().equalsIgnoreCase("student")) {
+				return ResponseEntity.badRequest().body("Student must be a valid student user");
+			}
+
+			// Check if already enrolled
+			Optional<Enrollment> existingEnrollment = enrollmentRepository.findByStudentIdAndCourseId(
+				enrollmentRequest.getStudentId(), courseId);
+			if (existingEnrollment.isPresent()) {
+				return ResponseEntity.badRequest().body("Student is already enrolled in this course");
+			}
+
+			Enrollment enrollment = new Enrollment();
+			enrollment.setStudent(studentOpt.get());
+			enrollment.setCourse(courseOpt.get());
+			enrollment.setEnrollmentDate(LocalDate.now());
+			enrollment.setStatus("ACTIVE");
+
+			enrollmentRepository.save(enrollment);
+			return ResponseEntity.ok("Student enrolled successfully");
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.status(500).body("Internal server error: " + e.getMessage());
 		}
-
-		Optional<User> studentOpt = userRepository.findById(enrollmentRequest.getStudentId());
-		if (studentOpt.isEmpty() || !studentOpt.get().getRole().name().equalsIgnoreCase("student")) {
-			return ResponseEntity.badRequest().body("Student must be a valid student user");
-		}
-
-		// Check if already enrolled
-		Optional<Enrollment> existingEnrollment = enrollmentRepository.findByStudentIdAndCourseId(
-			enrollmentRequest.getStudentId(), courseId);
-		if (existingEnrollment.isPresent()) {
-			return ResponseEntity.badRequest().body("Student is already enrolled in this course");
-		}
-
-		Enrollment enrollment = new Enrollment();
-		enrollment.setStudent(studentOpt.get());
-		enrollment.setCourse(courseOpt.get());
-		enrollment.setEnrollmentDate(LocalDate.now());
-		enrollment.setStatus("ACTIVE");
-
-		enrollmentRepository.save(enrollment);
-		return ResponseEntity.ok("Student enrolled successfully");
 	}
 
 	// Unenroll Student from Course
 	@DeleteMapping("/{courseId}/unenroll")
 	public ResponseEntity<?> unenrollStudentFromCourse(@PathVariable Long courseId, @RequestParam Long studentId) {
-		Optional<Enrollment> enrollmentOpt = enrollmentRepository.findByStudentIdAndCourseId(studentId, courseId);
-		if (enrollmentOpt.isEmpty()) {
-			return ResponseEntity.status(404).body("Enrollment not found");
-		}
+		try {
+			Optional<Enrollment> enrollmentOpt = enrollmentRepository.findByStudentIdAndCourseId(studentId, courseId);
+			if (enrollmentOpt.isEmpty()) {
+				return ResponseEntity.status(404).body("Enrollment not found");
+			}
 
-		enrollmentRepository.delete(enrollmentOpt.get());
-		return ResponseEntity.ok("Student unenrolled successfully");
+			enrollmentRepository.delete(enrollmentOpt.get());
+			return ResponseEntity.ok("Student unenrolled successfully");
+		} catch (Exception e) {
+			e.printStackTrace();
+			return ResponseEntity.status(500).body("Internal server error: " + e.getMessage());
+		}
 	}
 
 	// Get Students enrolled in a Course
