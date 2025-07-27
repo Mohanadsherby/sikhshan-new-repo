@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { getCourseById, unenrollFromCourse, getCourseAttachments } from "../../api/courseApi";
+import { getCourseById, unenrollFromCourse, getCourseAttachments, downloadCourseAttachment } from "../../api/courseApi";
 
 // Helper to format date
 const formatDate = (dateStr) => {
@@ -9,6 +9,18 @@ const formatDate = (dateStr) => {
   const date = new Date(dateStr);
   if (isNaN(date)) return "-";
   return date.toLocaleDateString();
+};
+
+// Helper to download file with original filename
+const downloadFile = (fileUrl, fileName) => {
+  // Simple approach: create a link and trigger download
+  const link = document.createElement('a');
+  link.href = fileUrl;
+  link.download = fileName;
+  link.target = '_blank';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 
 // Helper to get course image URL
@@ -203,14 +215,12 @@ function CourseDetailStudent() {
                   </p>
                 </div>
               </div>
-              <a
-                href={getCourseImageUrl(attachment.fileUrl)}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => downloadFile(attachment.fileUrl, attachment.fileName)}
                 className="px-3 py-1 text-sm bg-primary text-white rounded hover:bg-primary-dark"
               >
                 Download
-              </a>
+              </button>
             </div>
           ))}
         </div>

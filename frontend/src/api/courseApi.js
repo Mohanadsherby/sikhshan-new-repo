@@ -59,6 +59,33 @@ export const deleteCourseAttachment = async (courseId, attachmentId) => {
   return axios.delete(`${API}/api/courses/${courseId}/attachments/${attachmentId}`);
 };
 
+// Download course attachment
+export const downloadCourseAttachment = async (courseId, attachmentId) => {
+  try {
+    const response = await axios.get(`${API}/api/courses/${courseId}/attachments/${attachmentId}/download`, {
+      maxRedirects: 0, // Don't follow redirects automatically
+      validateStatus: function (status) {
+        return status >= 200 && status < 400; // Accept redirect status codes
+      }
+    });
+    
+    // If we get a redirect response, follow it manually
+    if (response.status === 302) {
+      const downloadUrl = response.headers.location;
+      if (downloadUrl) {
+        // Open the download URL in a new tab
+        window.open(downloadUrl, '_blank');
+        return response;
+      }
+    }
+    
+    return response;
+  } catch (error) {
+    console.error('Error downloading attachment:', error);
+    throw error;
+  }
+};
+
 // Course Image Upload
 export const uploadCourseImage = async (courseId, formData) => {
   return axios.post(`${API}/api/courses/${courseId}/image`, formData, {
