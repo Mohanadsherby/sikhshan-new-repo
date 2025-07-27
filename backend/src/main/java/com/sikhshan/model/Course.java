@@ -31,6 +31,8 @@ public class Course {
 	private LocalDate endDate;
 	private Integer credits;
 	private String imageUrl;
+	private String cloudinaryPublicId;
+	private String cloudinaryUrl;
 	private String status;
 	private LocalDate createdAt;
 
@@ -115,6 +117,22 @@ public class Course {
 
 	public void setImageUrl(String imageUrl) {
 		this.imageUrl = imageUrl;
+	}
+	
+	public String getCloudinaryPublicId() {
+		return cloudinaryPublicId;
+	}
+
+	public void setCloudinaryPublicId(String cloudinaryPublicId) {
+		this.cloudinaryPublicId = cloudinaryPublicId;
+	}
+
+	public String getCloudinaryUrl() {
+		return cloudinaryUrl;
+	}
+
+	public void setCloudinaryUrl(String cloudinaryUrl) {
+		this.cloudinaryUrl = cloudinaryUrl;
 	}
 
 	public String getStatus() {

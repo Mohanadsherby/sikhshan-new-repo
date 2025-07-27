@@ -5,18 +5,16 @@ import com.sikhshan.model.Course;
 import com.sikhshan.model.CourseAttachment;
 import com.sikhshan.repository.CourseAttachmentRepository;
 import com.sikhshan.repository.CourseRepository;
+import com.sikhshan.service.CloudinaryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -27,6 +25,8 @@ public class CourseAttachmentController {
     private CourseAttachmentRepository attachmentRepository;
     @Autowired
     private CourseRepository courseRepository;
+    @Autowired
+    private CloudinaryService cloudinaryService;
 
     @PostMapping
     public ResponseEntity<?> uploadAttachment(@PathVariable Long courseId, @RequestParam("file") MultipartFile file) {
@@ -34,23 +34,26 @@ public class CourseAttachmentController {
         if (courseOpt.isEmpty()) {
             return ResponseEntity.status(404).body("Course not found");
         }
-        String uploadDir = "uploads/course-attachments/";
-        File dir = new File(uploadDir);
-        if (!dir.exists()) dir.mkdirs();
-        String filename = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-        Path filepath = Paths.get(uploadDir, filename);
+        
         try {
-            Files.write(filepath, file.getBytes());
+            // Upload file to Cloudinary
+            Map<String, Object> uploadResult = cloudinaryService.uploadCourseAttachment(file, courseId);
+            
+            // Create attachment record
             CourseAttachment attachment = new CourseAttachment();
             attachment.setCourse(courseOpt.get());
             attachment.setFileName(file.getOriginalFilename());
             attachment.setFileType(file.getContentType());
-            attachment.setFileUrl("/" + uploadDir + filename);
+            attachment.setCloudinaryPublicId((String) uploadResult.get("public_id"));
+            attachment.setCloudinaryUrl((String) uploadResult.get("secure_url"));
+            attachment.setFileUrl((String) uploadResult.get("secure_url"));
             attachment.setUploadDate(LocalDateTime.now());
+            
             attachmentRepository.save(attachment);
             return ResponseEntity.ok(toResponse(attachment));
+            
         } catch (IOException e) {
-            return ResponseEntity.status(500).body("Failed to upload file");
+            return ResponseEntity.status(500).body("Failed to upload file: " + e.getMessage());
         }
     }
 
@@ -67,12 +70,19 @@ public class CourseAttachmentController {
         if (attachmentOpt.isEmpty() || !attachmentOpt.get().getCourse().getId().equals(courseId)) {
             return ResponseEntity.status(404).body("Attachment not found for this course");
         }
-        // Optionally delete the file from disk
-        String fileUrl = attachmentOpt.get().getFileUrl();
-        if (fileUrl != null && fileUrl.startsWith("/uploads/")) {
-            File file = new File("." + fileUrl);
-            if (file.exists()) file.delete();
+        
+        CourseAttachment attachment = attachmentOpt.get();
+        
+        // Delete file from Cloudinary if exists
+        if (attachment.getCloudinaryPublicId() != null && !attachment.getCloudinaryPublicId().isEmpty()) {
+            try {
+                cloudinaryService.deleteFile(attachment.getCloudinaryPublicId());
+            } catch (IOException e) {
+                // Log error but continue with deletion
+                System.err.println("Failed to delete attachment from Cloudinary: " + e.getMessage());
+            }
         }
+        
         attachmentRepository.deleteById(attachmentId);
         return ResponseEntity.ok("Attachment deleted");
     }

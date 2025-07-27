@@ -4,17 +4,15 @@ import com.sikhshan.dto.ProfileRequest;
 import com.sikhshan.dto.ProfileResponse;
 import com.sikhshan.model.User;
 import com.sikhshan.repository.UserRepository;
+import com.sikhshan.service.CloudinaryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -22,6 +20,9 @@ import java.util.Optional;
 public class ProfileController {
     @Autowired
     private UserRepository userRepository;
+    
+    @Autowired
+    private CloudinaryService cloudinaryService;
 
     // Get user's profile by ID
     @GetMapping("/{id}")
@@ -61,19 +62,32 @@ public class ProfileController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
         }
         User user = userOpt.get();
-        // Save file locally (e.g., in uploads/profile-pictures/)
-        String uploadDir = "uploads/profile-pictures/";
-        File dir = new File(uploadDir);
-        if (!dir.exists()) dir.mkdirs();
-        String filename = user.getEmail().replaceAll("[^a-zA-Z0-9]", "_") + "_" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
-        Path filepath = Paths.get(uploadDir, filename);
+        
         try {
-            Files.write(filepath, file.getBytes());
-            user.setProfilePictureUrl("/" + uploadDir + filename);
+            // Delete old profile picture from Cloudinary if exists
+            if (user.getCloudinaryPublicId() != null && !user.getCloudinaryPublicId().isEmpty()) {
+                try {
+                    cloudinaryService.deleteFile(user.getCloudinaryPublicId());
+                } catch (IOException e) {
+                    // Log error but continue with upload
+                    System.err.println("Failed to delete old profile picture: " + e.getMessage());
+                }
+            }
+            
+            // Upload new profile picture to Cloudinary
+            Map<String, Object> uploadResult = cloudinaryService.uploadProfilePicture(file, user.getId());
+            
+            // Update user with Cloudinary information
+            user.setCloudinaryPublicId((String) uploadResult.get("public_id"));
+            user.setCloudinaryUrl((String) uploadResult.get("secure_url"));
+            user.setProfilePictureUrl((String) uploadResult.get("secure_url"));
+            user.setUpdatedAt(java.time.LocalDateTime.now());
+            
             userRepository.save(user);
             return ResponseEntity.ok(toProfileResponse(user));
+            
         } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload image");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload image: " + e.getMessage());
         }
     }
 

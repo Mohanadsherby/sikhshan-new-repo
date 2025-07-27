@@ -1,4 +1,4 @@
--- Update enrollment table to add missing columns
+-- Add enrollment_date and status columns to enrollment table if they don't exist
 ALTER TABLE enrollment ADD COLUMN IF NOT EXISTS enrollment_date DATE;
 ALTER TABLE enrollment ADD COLUMN IF NOT EXISTS status VARCHAR(50);
 
