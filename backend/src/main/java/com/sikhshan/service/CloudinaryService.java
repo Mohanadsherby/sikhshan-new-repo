@@ -8,6 +8,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Map;
+import com.cloudinary.Transformation;
 
 @Service
 public class CloudinaryService {
@@ -86,10 +87,9 @@ public class CloudinaryService {
                          filenameWithoutExt + "_" + timestamp + fileExtension;
         
         Map<String, Object> uploadParams = ObjectUtils.asMap(
-            "folder", "sikhshan/course-attachments/course_" + courseId,
             "public_id", publicId,
             "overwrite", false, // Don't overwrite to preserve unique filenames
-            "resource_type", "auto",
+            "resource_type", "raw", // Force all files to be treated as raw files
             "use_filename", true, // Use original filename
             "unique_filename", true, // Ensure unique filenames
             "access_mode", "public" // Make files publicly accessible
@@ -105,5 +105,23 @@ public class CloudinaryService {
      */
     public Map<String, Object> deleteFile(String publicId) throws IOException {
         return cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+    }
+
+    /**
+     * Generate a proper raw download URL for files
+     * @param publicId The public ID of the file
+     * @param originalFilename The original filename
+     * @return Proper raw URL for downloading
+     */
+    public String generateRawDownloadUrl(String publicId, String originalFilename) {
+        try {
+            // Generate simple raw URL that works
+            return cloudinary.url()
+                .resourceType("raw")
+                .generate(publicId);
+        } catch (Exception e) {
+            // Fallback to simple raw URL if transformation fails
+            return cloudinary.url().resourceType("raw").generate(publicId);
+        }
     }
 } 

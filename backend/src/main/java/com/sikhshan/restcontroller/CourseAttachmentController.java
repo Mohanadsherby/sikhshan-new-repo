@@ -60,9 +60,15 @@ public class CourseAttachmentController {
 
     @GetMapping
     public ResponseEntity<List<CourseAttachmentResponse>> listAttachments(@PathVariable Long courseId) {
-        List<CourseAttachment> attachments = attachmentRepository.findByCourseId(courseId);
-        List<CourseAttachmentResponse> responses = attachments.stream().map(this::toResponse).collect(Collectors.toList());
-        return ResponseEntity.ok(responses);
+        try {
+            List<CourseAttachment> attachments = attachmentRepository.findByCourseId(courseId);
+            List<CourseAttachmentResponse> responses = attachments.stream().map(this::toResponse).collect(Collectors.toList());
+            return ResponseEntity.ok(responses);
+        } catch (Exception e) {
+            System.err.println("Error listing attachments for course " + courseId + ": " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).build();
+        }
     }
 
     @GetMapping("/{attachmentId}/download")
@@ -75,21 +81,18 @@ public class CourseAttachmentController {
         CourseAttachment attachment = attachmentOpt.get();
         
         try {
-            // Just return the file URL directly
-            String downloadUrl = attachment.getFileUrl();
+            // Generate simple raw URL
+            String downloadUrl = cloudinaryService.generateRawDownloadUrl(
+                attachment.getCloudinaryPublicId(), 
+                attachment.getFileName()
+            );
             
-            // Add fl_attachment parameter if not already present
-            if (!downloadUrl.contains("fl_attachment")) {
-                if (downloadUrl.contains("?")) {
-                    downloadUrl += "&fl_attachment=" + java.net.URLEncoder.encode(attachment.getFileName(), "UTF-8");
-                } else {
-                    downloadUrl += "?fl_attachment=" + java.net.URLEncoder.encode(attachment.getFileName(), "UTF-8");
-                }
-            }
-            
-            // Redirect to the download URL
+            // Set headers to force download with proper filename
             HttpHeaders headers = new HttpHeaders();
             headers.add(HttpHeaders.LOCATION, downloadUrl);
+            headers.add("Content-Disposition", "attachment; filename=\"" + attachment.getFileName() + "\"");
+            headers.add("Content-Type", attachment.getFileType());
+            
             return ResponseEntity.status(302).headers(headers).build();
                 
         } catch (Exception e) {
@@ -125,7 +128,20 @@ public class CourseAttachmentController {
         resp.setId(attachment.getId());
         resp.setFileName(attachment.getFileName());
         resp.setFileType(attachment.getFileType());
-        resp.setFileUrl(attachment.getFileUrl());
+        
+        try {
+            // Generate proper raw URL instead of using default secure_url
+            String rawUrl = cloudinaryService.generateRawDownloadUrl(
+                attachment.getCloudinaryPublicId(), 
+                attachment.getFileName()
+            );
+            resp.setFileUrl(rawUrl);
+        } catch (Exception e) {
+            // Fallback to original URL if raw URL generation fails
+            resp.setFileUrl(attachment.getFileUrl());
+            System.err.println("Failed to generate raw URL for attachment " + attachment.getId() + ": " + e.getMessage());
+        }
+        
         resp.setUploadDate(attachment.getUploadDate());
         return resp;
     }
