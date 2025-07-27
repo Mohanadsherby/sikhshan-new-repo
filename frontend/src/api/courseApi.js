@@ -66,4 +66,9 @@ export const uploadCourseImage = async (courseId, formData) => {
       'Content-Type': 'multipart/form-data',
     },
   });
+};
+
+// Get students enrolled in a course
+export const getStudentsInCourse = async (courseId) => {
+  return axios.get(`${API}/api/courses/${courseId}/students`);
 }; 

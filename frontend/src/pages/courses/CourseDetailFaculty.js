@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { getCourseById, getCourseAttachments, uploadCourseAttachment, deleteCourseAttachment, deleteCourse } from "../../api/courseApi";
+import { getCourseById, getCourseAttachments, uploadCourseAttachment, deleteCourseAttachment, deleteCourse, getStudentsInCourse } from "../../api/courseApi";
 
 // Helper to format date
 const formatDate = (dateStr) => {
@@ -58,9 +58,13 @@ function CourseDetailFaculty() {
           console.error("Error fetching attachments:", err);
         }
         
-        // TODO: Fetch students when API is ready
-        // const studentsRes = await getCourseStudents(courseId);
-        // setStudents(studentsRes.data);
+        // Fetch students
+        try {
+          const studentsRes = await getStudentsInCourse(courseId);
+          setStudents(studentsRes.data);
+        } catch (err) {
+          console.error("Error fetching students:", err);
+        }
       } catch (err) {
         setError("Failed to load course details.");
         console.error("Error fetching course:", err);
@@ -273,11 +277,20 @@ function CourseDetailFaculty() {
 
   const renderStudents = () => (
     <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-800 mb-6">Enrolled Students</h3>
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-lg font-semibold text-gray-800">Enrolled Students ({students.length})</h3>
+        <Link
+          to={`/faculty/courses/${courseId}/students`}
+          className="px-4 py-2 border border-primary text-primary rounded-md hover:bg-primary-50"
+        >
+          View Full List
+        </Link>
+      </div>
       
       {students.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           <p>No students enrolled yet.</p>
+          <p className="text-sm mt-2">Students will appear here once they enroll in the course.</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -299,8 +312,8 @@ function CourseDetailFaculty() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {students.map((student) => (
-                <tr key={student.id}>
+              {students.slice(0, 5).map((student) => (
+                <tr key={student.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center">
@@ -310,6 +323,7 @@ function CourseDetailFaculty() {
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                        <div className="text-sm text-gray-500">ID: {student.id}</div>
                       </div>
                     </div>
                   </td>
@@ -320,14 +334,32 @@ function CourseDetailFaculty() {
                     {formatDate(student.enrolledDate)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                      Active
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      student.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                      student.status === 'INACTIVE' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {student.status}
                     </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          
+          {students.length > 5 && (
+            <div className="mt-4 text-center">
+              <p className="text-sm text-gray-500">
+                Showing 5 of {students.length} students. 
+                <Link
+                  to={`/faculty/courses/${courseId}/students`}
+                  className="text-primary hover:text-primary-dark ml-1"
+                >
+                  View all students →
+                </Link>
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

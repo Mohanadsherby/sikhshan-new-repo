@@ -28,16 +28,20 @@ function StudentProfile() {
       setLoading(true);
       try {
         const res = await getProfile(currentUser.id);
-        setProfile({
+        const profileData = {
           ...res.data,
           dateOfBirth: res.data.dateOfBirth || "",
-        });
-        // Update AuthContext with latest name and profile picture
-        setCurrentUser((prev) => ({
-          ...prev,
-          name: res.data.name,
-          profilePictureUrl: res.data.profilePictureUrl,
-        }));
+        };
+        setProfile(profileData);
+        
+        // Only update AuthContext if the data actually changed
+        if (res.data.name !== currentUser.name || res.data.profilePictureUrl !== currentUser.profilePictureUrl) {
+          setCurrentUser((prev) => ({
+            ...prev,
+            name: res.data.name,
+            profilePictureUrl: res.data.profilePictureUrl,
+          }));
+        }
       } catch (err) {
         alert("Failed to load profile");
       } finally {
@@ -45,7 +49,7 @@ function StudentProfile() {
       }
     };
     fetchProfile();
-  }, [currentUser, setCurrentUser]);
+  }, [currentUser?.id]); // Only depend on currentUser.id, not the entire currentUser object
 
   const handleImageChange = (e) => {
     const file = e.target.files[0]
@@ -98,13 +102,22 @@ function StudentProfile() {
     setLoading(true);
     try {
       const res = await uploadProfilePicture(currentUser.id, file);
-      setProfile((prev) => ({ ...prev, profilePictureUrl: res.data.profilePictureUrl }));
-      setCurrentUser((prev) => ({
-        ...prev,
-        profilePictureUrl: res.data.profilePictureUrl,
-      }));
+      const newProfilePictureUrl = res.data.profilePictureUrl;
+      
+      // Update profile state
+      setProfile((prev) => ({ ...prev, profilePictureUrl: newProfilePictureUrl }));
+      
+      // Update AuthContext only if the URL actually changed
+      if (newProfilePictureUrl !== currentUser.profilePictureUrl) {
+        setCurrentUser((prev) => ({
+          ...prev,
+          profilePictureUrl: newProfilePictureUrl,
+        }));
+      }
+      
       alert("Profile picture updated successfully");
     } catch (err) {
+      console.error("Profile picture upload error:", err);
       alert("Failed to upload profile picture");
     } finally {
       setLoading(false);
