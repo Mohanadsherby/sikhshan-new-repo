@@ -27,7 +27,8 @@ public class CloudinaryService {
             "public_id", "user_" + userId + "_" + System.currentTimeMillis(),
             "overwrite", true,
             "resource_type", "image",
-            "transformation", "w_300,h_300,c_fill,g_face"
+            "transformation", "w_300,h_300,c_fill,g_face",
+            "access_mode", "public" // Make files publicly accessible
         );
         
         return cloudinary.uploader().upload(file.getBytes(), uploadParams);
@@ -45,7 +46,8 @@ public class CloudinaryService {
             "public_id", "course_" + courseId + "_" + System.currentTimeMillis(),
             "overwrite", true,
             "resource_type", "image",
-            "transformation", "w_800,h_600,c_fill"
+            "transformation", "w_800,h_600,c_fill",
+            "access_mode", "public" // Make files publicly accessible
         );
         
         return cloudinary.uploader().upload(file.getBytes(), uploadParams);
@@ -58,11 +60,39 @@ public class CloudinaryService {
      * @return Map containing upload result with public_id and url
      */
     public Map<String, Object> uploadCourseAttachment(MultipartFile file, Long courseId) throws IOException {
+        // Get original filename and sanitize it
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || originalFilename.isEmpty()) {
+            originalFilename = "unnamed_file";
+        }
+        
+        // Sanitize filename: remove special characters, keep alphanumeric, dots, hyphens, underscores
+        String sanitizedFilename = originalFilename.replaceAll("[^a-zA-Z0-9._-]", "_");
+        
+        // Add timestamp to ensure uniqueness
+        String timestamp = String.valueOf(System.currentTimeMillis());
+        String filenameWithoutExt = sanitizedFilename;
+        String fileExtension = "";
+        
+        // Extract file extension
+        int lastDotIndex = sanitizedFilename.lastIndexOf('.');
+        if (lastDotIndex > 0) {
+            filenameWithoutExt = sanitizedFilename.substring(0, lastDotIndex);
+            fileExtension = sanitizedFilename.substring(lastDotIndex);
+        }
+        
+        // Create unique public_id with original filename
+        String publicId = "sikhshan/course-attachments/course_" + courseId + "/" + 
+                         filenameWithoutExt + "_" + timestamp + fileExtension;
+        
         Map<String, Object> uploadParams = ObjectUtils.asMap(
-            "folder", "sikhshan/course-attachments",
-            "public_id", "course_" + courseId + "_attachment_" + System.currentTimeMillis(),
-            "overwrite", true,
-            "resource_type", "auto"
+            "folder", "sikhshan/course-attachments/course_" + courseId,
+            "public_id", publicId,
+            "overwrite", false, // Don't overwrite to preserve unique filenames
+            "resource_type", "auto",
+            "use_filename", true, // Use original filename
+            "unique_filename", true, // Ensure unique filenames
+            "access_mode", "public" // Make files publicly accessible
         );
         
         return cloudinary.uploader().upload(file.getBytes(), uploadParams);

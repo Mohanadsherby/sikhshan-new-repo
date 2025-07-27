@@ -7,6 +7,7 @@ import com.sikhshan.repository.CourseAttachmentRepository;
 import com.sikhshan.repository.CourseRepository;
 import com.sikhshan.service.CloudinaryService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -62,6 +63,38 @@ public class CourseAttachmentController {
         List<CourseAttachment> attachments = attachmentRepository.findByCourseId(courseId);
         List<CourseAttachmentResponse> responses = attachments.stream().map(this::toResponse).collect(Collectors.toList());
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/{attachmentId}/download")
+    public ResponseEntity<?> downloadAttachment(@PathVariable Long courseId, @PathVariable Long attachmentId) {
+        Optional<CourseAttachment> attachmentOpt = attachmentRepository.findById(attachmentId);
+        if (attachmentOpt.isEmpty() || !attachmentOpt.get().getCourse().getId().equals(courseId)) {
+            return ResponseEntity.status(404).build();
+        }
+        
+        CourseAttachment attachment = attachmentOpt.get();
+        
+        try {
+            // Just return the file URL directly
+            String downloadUrl = attachment.getFileUrl();
+            
+            // Add fl_attachment parameter if not already present
+            if (!downloadUrl.contains("fl_attachment")) {
+                if (downloadUrl.contains("?")) {
+                    downloadUrl += "&fl_attachment=" + java.net.URLEncoder.encode(attachment.getFileName(), "UTF-8");
+                } else {
+                    downloadUrl += "?fl_attachment=" + java.net.URLEncoder.encode(attachment.getFileName(), "UTF-8");
+                }
+            }
+            
+            // Redirect to the download URL
+            HttpHeaders headers = new HttpHeaders();
+            headers.add(HttpHeaders.LOCATION, downloadUrl);
+            return ResponseEntity.status(302).headers(headers).build();
+                
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to generate download URL: " + e.getMessage());
+        }
     }
 
     @DeleteMapping("/{attachmentId}")
