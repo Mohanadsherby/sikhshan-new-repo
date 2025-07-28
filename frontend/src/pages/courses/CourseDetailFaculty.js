@@ -231,7 +231,7 @@ function CourseDetailFaculty() {
 
   const renderMaterials = () => (
     <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h3 className="text-lg font-semibold text-gray-800">Course Materials</h3>
         <label className="cursor-pointer">
           <input
@@ -254,26 +254,26 @@ function CourseDetailFaculty() {
       ) : (
         <div className="space-y-3">
           {attachments.map((attachment) => (
-            <div key={attachment.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl">{getFileIcon(attachment.fileType)}</span>
-                <div>
-                  <p className="font-medium text-gray-900">{attachment.fileName}</p>
+            <div key={attachment.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200 rounded-lg gap-3">
+              <div className="flex items-center space-x-3 min-w-0 flex-1">
+                <span className="text-2xl flex-shrink-0">{getFileIcon(attachment.fileType)}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-gray-900 truncate">{attachment.fileName}</p>
                   <p className="text-sm text-gray-500">
                     {formatDate(attachment.uploadDate)} • {attachment.fileType}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 flex-shrink-0">
                 <button
                   onClick={() => downloadFile(attachment.fileUrl, attachment.fileName)}
-                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 whitespace-nowrap"
                 >
                   Download
                 </button>
                 <button
                   onClick={() => handleDeleteAttachment(attachment.id)}
-                  className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                  className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 whitespace-nowrap"
                 >
                   Delete
                 </button>
@@ -453,4 +453,4 @@ function CourseDetailFaculty() {
   );
 }
 
-export default CourseDetailFaculty; 
+export default CourseDetailFaculty;
