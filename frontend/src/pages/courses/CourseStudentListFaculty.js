@@ -18,6 +18,13 @@ const getCourseImageUrl = (imageUrl) => {
   return process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081' + imageUrl;
 };
 
+// Helper to get profile image URL
+const getProfileImageUrl = (imageUrl) => {
+  if (!imageUrl) return null;
+  if (imageUrl.startsWith('http')) return imageUrl;
+  return process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081' + imageUrl;
+};
+
 function CourseStudentListFaculty() {
   const { courseId } = useParams();
   const { currentUser } = useAuth();
@@ -194,7 +201,18 @@ function CourseStudentListFaculty() {
                   <tr key={student.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center">
+                        {student.profilePictureUrl ? (
+                          <img
+                            src={getProfileImageUrl(student.profilePictureUrl)}
+                            alt={student.name}
+                            className="h-10 w-10 rounded-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div className={`h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center ${student.profilePictureUrl ? 'hidden' : ''}`}>
                           <span className="text-sm font-medium">
                             {student.name ? student.name.charAt(0).toUpperCase() : 'S'}
                           </span>
