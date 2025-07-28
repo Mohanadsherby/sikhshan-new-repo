@@ -35,8 +35,10 @@ import CourseStudentListFaculty from "./pages/courses/CourseStudentListFaculty";
 import AssignmentCreateFaculty from "./pages/assignments/AssignmentCreateFaculty"
 import AssignmentSubmitStudent from "./pages/assignments/AssignmentSubmitStudent"
 import AssignmentListStudent from "./pages/assignments/AssignmentListStudent"
+import AssignmentDetailStudent from "./pages/assignments/AssignmentDetailStudent"
 import AssignmentListFaculty from "./pages/assignments/AssignmentListFaculty"
 import AssignmentDetailFaculty from "./pages/assignments/AssignmentDetailFaculty"
+import AssignmentEditFaculty from "./pages/assignments/AssignmentEditFaculty"
 
 // Quiz Pages
 import QuizAttempt from "./pages/quizzes/QuizAttempt"
@@ -93,7 +95,8 @@ function App() {
             <Route path="courses/:courseId/students" element={<CourseStudentListFaculty />} />
             <Route path="assignments/create" element={<AssignmentCreateFaculty />} />
             <Route path="assignments" element={<AssignmentListFaculty />} />
-            <Route path="assignments/:id/view" element={<AssignmentDetailFaculty />} />
+            <Route path="assignments/:id" element={<AssignmentDetailFaculty />} />
+            <Route path="assignments/:id/edit" element={<AssignmentEditFaculty />} />
             <Route path="assignments/:assignmentId/grade/:submissionId" element={<AssignmentDetailFaculty />} />
             <Route path="quizzes" element={<QuizListFaculty />} />
             <Route path="quizzes/create" element={<QuizCreation />} />
@@ -136,8 +139,8 @@ function App() {
             <Route path="courses/unenroll" element={<UnenrollCourseStudent />} />
             <Route path="courses/:courseId" element={<CourseDetailStudent />} />
             <Route path="assignments" element={<AssignmentListStudent />} />
+            <Route path="assignments/:id" element={<AssignmentDetailStudent />} />
             <Route path="assignments/:id/submit" element={<AssignmentSubmitStudent />} />
-            <Route path="assignments/:id" element={<AssignmentListStudent />} />
             <Route path="quizzes/attempt" element={<QuizAttempt />} />
             <Route path="quizzes/:id/view" element={<QuizAttempt />} />
             <Route path="profile" element={<Profile />} />

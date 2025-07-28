@@ -74,13 +74,20 @@ function AssignmentCreateFaculty() {
         setError("");
 
         try {
-            // Combine date and time
-            const dueDateTime = new Date(`${formData.dueDate}T${formData.dueTime}`);
+            // Parse the date and time inputs
+            const [year, month, day] = formData.dueDate.split('-').map(Number);
+            const [hours, minutes] = formData.dueTime.split(':').map(Number);
+            
+            // Create date in local timezone (assuming browser is in Kathmandu timezone)
+            const localDateTime = new Date(year, month - 1, day, hours, minutes);
+            
+            // Convert to UTC by subtracting the timezone offset
+            const utcDateTime = new Date(localDateTime.getTime() - (localDateTime.getTimezoneOffset() * 60000));
             
             const assignmentData = {
                 name: formData.name,
                 description: formData.description,
-                dueDate: dueDateTime.toISOString(),
+                dueDate: utcDateTime.toISOString(),
                 courseId: parseInt(formData.courseId),
                 status: formData.status
             };
