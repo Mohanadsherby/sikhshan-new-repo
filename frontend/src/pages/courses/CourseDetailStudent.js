@@ -30,6 +30,13 @@ const getCourseImageUrl = (imageUrl) => {
   return process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081' + imageUrl;
 };
 
+// Helper to get profile image URL
+const getProfileImageUrl = (imageUrl) => {
+  if (!imageUrl) return null;
+  if (imageUrl.startsWith('http')) return imageUrl;
+  return process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081' + imageUrl;
+};
+
 // Helper to get file icon based on file type
 const getFileIcon = (fileType) => {
   if (fileType?.includes('pdf')) return '📄';
@@ -179,7 +186,18 @@ function CourseDetailStudent() {
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Instructor Information</h3>
         <div className="flex items-center space-x-4">
-          <div className="h-12 w-12 rounded-full bg-primary text-white flex items-center justify-center">
+          {course.instructorProfilePictureUrl ? (
+            <img
+              src={getProfileImageUrl(course.instructorProfilePictureUrl)}
+              alt={course.instructor}
+              className="h-12 w-12 rounded-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <div className={`h-12 w-12 rounded-full bg-primary text-white flex items-center justify-center ${course.instructorProfilePictureUrl ? 'hidden' : ''}`}>
             <span className="text-lg font-medium">
               {course.instructor ? course.instructor.charAt(0).toUpperCase() : 'I'}
             </span>
