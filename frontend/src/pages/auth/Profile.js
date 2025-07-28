@@ -28,16 +28,20 @@ function StudentProfile() {
       setLoading(true);
       try {
         const res = await getProfile(currentUser.id);
-        setProfile({
+        const profileData = {
           ...res.data,
           dateOfBirth: res.data.dateOfBirth || "",
-        });
-        // Update AuthContext with latest name and profile picture
-        setCurrentUser((prev) => ({
-          ...prev,
-          name: res.data.name,
-          profilePictureUrl: res.data.profilePictureUrl,
-        }));
+        };
+        setProfile(profileData);
+        
+        // Only update AuthContext if the data actually changed
+        if (res.data.name !== currentUser.name || res.data.profilePictureUrl !== currentUser.profilePictureUrl) {
+          setCurrentUser((prev) => ({
+            ...prev,
+            name: res.data.name,
+            profilePictureUrl: res.data.profilePictureUrl,
+          }));
+        }
       } catch (err) {
         alert("Failed to load profile");
       } finally {
@@ -45,18 +49,7 @@ function StudentProfile() {
       }
     };
     fetchProfile();
-  }, [currentUser, setCurrentUser]);
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setPreviewImage(reader.result)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
+  }, [currentUser?.id]); // Only depend on currentUser.id, not the entire currentUser object
 
   // Handle form field changes (edit mode)
   const handleChange = (e) => {
@@ -69,18 +62,31 @@ function StudentProfile() {
     e.preventDefault();
     if (!currentUser) return;
     setLoading(true);
+    
     try {
+      // First, upload profile picture if there's a preview
+      if (previewImage) {
+        const uploadSuccess = await uploadProfilePictureIfNeeded();
+        if (!uploadSuccess) {
+          setLoading(false);
+          return; // Don't proceed with other updates if image upload failed
+        }
+      }
+      
+      // Then update other profile fields
       const req = { ...editedProfile };
       delete req.email; // email is not updatable
       delete req.profilePictureUrl;
       const res = await updateProfile(currentUser.id, req);
       setProfile({ ...profile, ...res.data });
+      
       // Update AuthContext with latest name and profile picture
       setCurrentUser((prev) => ({
         ...prev,
         name: res.data.name,
         profilePictureUrl: res.data.profilePictureUrl,
       }));
+      
       setIsEditing(false);
       alert("Profile updated successfully");
     } catch (err) {
@@ -90,22 +96,55 @@ function StudentProfile() {
     }
   };
 
-  // Handle profile picture upload
-  const handleFileChange = async (e) => {
-    if (!currentUser) return;
+  // Handle file selection for preview only
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    
+    // Show immediate preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPreviewImage(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle profile picture upload (called when Save Changes is clicked)
+  const uploadProfilePictureIfNeeded = async () => {
+    if (!previewImage || !currentUser) return;
+    
+    // Get the file from the input
+    const fileInput = document.getElementById('profile-image');
+    if (!fileInput || !fileInput.files[0]) return;
+    
+    const file = fileInput.files[0];
     setLoading(true);
+    
     try {
       const res = await uploadProfilePicture(currentUser.id, file);
-      setProfile((prev) => ({ ...prev, profilePictureUrl: res.data.profilePictureUrl }));
-      setCurrentUser((prev) => ({
-        ...prev,
-        profilePictureUrl: res.data.profilePictureUrl,
-      }));
-      alert("Profile picture updated successfully");
+      const newProfilePictureUrl = res.data.profilePictureUrl;
+      
+      // Update profile state
+      setProfile((prev) => ({ ...prev, profilePictureUrl: newProfilePictureUrl }));
+      
+      // Update AuthContext only if the URL actually changed
+      if (newProfilePictureUrl !== currentUser.profilePictureUrl) {
+        setCurrentUser((prev) => ({
+          ...prev,
+          profilePictureUrl: newProfilePictureUrl,
+        }));
+      }
+      
+      // Clear preview image since we now have the actual uploaded image
+      setPreviewImage(null);
+      
+      return true; // Success
     } catch (err) {
+      console.error("Profile picture upload error:", err);
       alert("Failed to upload profile picture");
+      // Clear preview on error
+      setPreviewImage(null);
+      return false; // Failed
     } finally {
       setLoading(false);
     }
@@ -119,6 +158,7 @@ function StudentProfile() {
   const handleCancel = () => {
     setEditedProfile(profile);
     setIsEditing(false);
+    setPreviewImage(null); // Clear preview when canceling
   };
 
   // Helper to get the full profile picture URL
@@ -164,10 +204,15 @@ function StudentProfile() {
       <div className="flex flex-col items-center mb-6">
         <div className="relative">
           <img
-            src={getProfilePictureUrl(isEditing ? editedProfile.profilePictureUrl : profile.profilePictureUrl)}
+            src={previewImage || getProfilePictureUrl(isEditing ? editedProfile.profilePictureUrl : profile.profilePictureUrl)}
             alt="Profile"
             className="h-32 w-32 rounded-full object-cover border-2 border-gray-300"
           />
+          {loading && (
+            <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+            </div>
+          )}
           {isEditing && (
             <label
               htmlFor="profile-image"

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { getCourseById, unenrollFromCourse, getCourseAttachments } from "../../api/courseApi";
+import { getCourseById, unenrollFromCourse, getCourseAttachments, downloadCourseAttachment } from "../../api/courseApi";
 
 // Helper to format date
 const formatDate = (dateStr) => {
@@ -11,9 +11,28 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString();
 };
 
+// Helper to download file with original filename
+const downloadFile = (fileUrl, fileName) => {
+  // Simple approach: create a link and trigger download
+  const link = document.createElement('a');
+  link.href = fileUrl;
+  link.download = fileName;
+  link.target = '_blank';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
 // Helper to get course image URL
 const getCourseImageUrl = (imageUrl) => {
   if (!imageUrl) return "/placeholder.jpg";
+  if (imageUrl.startsWith('http')) return imageUrl;
+  return process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081' + imageUrl;
+};
+
+// Helper to get profile image URL
+const getProfileImageUrl = (imageUrl) => {
+  if (!imageUrl) return null;
   if (imageUrl.startsWith('http')) return imageUrl;
   return process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081' + imageUrl;
 };
@@ -167,7 +186,18 @@ function CourseDetailStudent() {
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Instructor Information</h3>
         <div className="flex items-center space-x-4">
-          <div className="h-12 w-12 rounded-full bg-primary text-white flex items-center justify-center">
+          {course.instructorProfilePictureUrl ? (
+            <img
+              src={getProfileImageUrl(course.instructorProfilePictureUrl)}
+              alt={course.instructor}
+              className="h-12 w-12 rounded-full object-cover"
+              onError={(e) => {
+                e.target.style.display = 'none';
+                e.target.nextSibling.style.display = 'flex';
+              }}
+            />
+          ) : null}
+          <div className={`h-12 w-12 rounded-full bg-primary text-white flex items-center justify-center ${course.instructorProfilePictureUrl ? 'hidden' : ''}`}>
             <span className="text-lg font-medium">
               {course.instructor ? course.instructor.charAt(0).toUpperCase() : 'I'}
             </span>
@@ -193,24 +223,22 @@ function CourseDetailStudent() {
       ) : (
         <div className="space-y-3">
           {attachments.map((attachment) => (
-            <div key={attachment.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl">{getFileIcon(attachment.fileType)}</span>
-                <div>
-                  <p className="font-medium text-gray-900">{attachment.fileName}</p>
+            <div key={attachment.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200 rounded-lg gap-3">
+              <div className="flex items-center space-x-3 min-w-0 flex-1">
+                <span className="text-2xl flex-shrink-0">{getFileIcon(attachment.fileType)}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-gray-900 truncate">{attachment.fileName}</p>
                   <p className="text-sm text-gray-500">
                     {formatDate(attachment.uploadDate)} • {attachment.fileType}
                   </p>
                 </div>
               </div>
-              <a
-                href={getCourseImageUrl(attachment.fileUrl)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1 text-sm bg-primary text-white rounded hover:bg-primary-dark"
+              <button
+                onClick={() => downloadFile(attachment.fileUrl, attachment.fileName)}
+                className="px-3 py-1 text-sm bg-primary text-white rounded hover:bg-primary-dark whitespace-nowrap flex-shrink-0"
               >
                 Download
-              </a>
+              </button>
             </div>
           ))}
         </div>

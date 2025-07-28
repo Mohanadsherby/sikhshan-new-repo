@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { getCourseById, updateCourse } from "../../api/courseApi";
+import { getCourseById, updateCourse, uploadCourseImage } from "../../api/courseApi";
 
 // Helper to format date for input fields
 const formatDateForInput = (dateStr) => {
@@ -34,6 +34,8 @@ function CourseEditFaculty() {
     credits: "",
     status: "ACTIVE"
   });
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -57,6 +59,7 @@ function CourseEditFaculty() {
           credits: courseData.credits?.toString() || "",
           status: courseData.status || "ACTIVE"
         });
+        setImagePreview(getCourseImageUrl(courseData.imageUrl));
       } catch (err) {
         setError("Failed to load course details.");
         console.error("Error fetching course:", err);
@@ -81,6 +84,18 @@ function CourseEditFaculty() {
     });
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
@@ -93,7 +108,24 @@ function CourseEditFaculty() {
         credits: parseInt(formData.credits) || 0
       };
       
-      await updateCourse(courseId, updateData);
+      // Update course first
+      const res = await updateCourse(courseId, updateData);
+      const updatedCourse = res.data;
+      
+      // Upload new image if selected
+      if (selectedImage) {
+        try {
+          const formData = new FormData();
+          formData.append('file', selectedImage);
+          const imageRes = await uploadCourseImage(courseId, formData);
+          // Update the course with the new image URL
+          updatedCourse.imageUrl = imageRes.data.imageUrl;
+        } catch (imageErr) {
+          console.error("Error uploading image:", imageErr);
+          // Don't fail the entire operation if image upload fails
+        }
+      }
+      
       navigate(`/faculty/courses/${courseId}`, { 
         state: { success: "Course updated successfully!" } 
       });
@@ -283,6 +315,37 @@ function CourseEditFaculty() {
                   ></textarea>
                 </div>
 
+                {/* Course Image */}
+                <div className="col-span-2">
+                  <label htmlFor="image" className="block text-sm font-medium text-gray-700 mb-1">
+                    Course Image
+                  </label>
+                  <div className="flex items-center space-x-4">
+                    <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center overflow-hidden">
+                      {imagePreview ? (
+                        <img src={imagePreview} alt="Course Preview" className="w-full h-full object-cover rounded-lg" />
+                      ) : (
+                        <span className="text-gray-500 text-xs text-center">No image</span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        id="image"
+                        name="image"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-dark"
+                      />
+                      {selectedImage && (
+                        <p className="text-xs text-green-600 mt-1">
+                          ✓ New image selected: {selectedImage.name}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
                 {/* Submit Button */}
                 <div className="col-span-2 flex justify-end space-x-4">
                   <button
@@ -313,7 +376,7 @@ function CourseEditFaculty() {
             
             <div className="mb-4">
               <img
-                src={getCourseImageUrl(course?.imageUrl)}
+                src={imagePreview || getCourseImageUrl(course?.imageUrl)}
                 alt={formData.name || "Course"}
                 className="w-full h-32 object-cover rounded-lg"
               />

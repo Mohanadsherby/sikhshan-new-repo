@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { getCourseById, getCourseAttachments, uploadCourseAttachment, deleteCourseAttachment } from "../../api/courseApi";
+import { getCourseById, getCourseAttachments, uploadCourseAttachment, deleteCourseAttachment, deleteCourse, getStudentsInCourse, downloadCourseAttachment } from "../../api/courseApi";
 
 // Helper to format date
 const formatDate = (dateStr) => {
@@ -11,9 +11,28 @@ const formatDate = (dateStr) => {
   return date.toLocaleDateString();
 };
 
+// Helper to download file with original filename
+const downloadFile = (fileUrl, fileName) => {
+  // Simple approach: create a link and trigger download
+  const link = document.createElement('a');
+  link.href = fileUrl;
+  link.download = fileName;
+  link.target = '_blank';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
 // Helper to get course image URL
 const getCourseImageUrl = (imageUrl) => {
   if (!imageUrl) return "/placeholder.jpg";
+  if (imageUrl.startsWith('http')) return imageUrl;
+  return process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081' + imageUrl;
+};
+
+// Helper to get profile image URL
+const getProfileImageUrl = (imageUrl) => {
+  if (!imageUrl) return null;
   if (imageUrl.startsWith('http')) return imageUrl;
   return process.env.REACT_APP_API_BASE_URL || 'http://localhost:8081' + imageUrl;
 };
@@ -58,9 +77,13 @@ function CourseDetailFaculty() {
           console.error("Error fetching attachments:", err);
         }
         
-        // TODO: Fetch students when API is ready
-        // const studentsRes = await getCourseStudents(courseId);
-        // setStudents(studentsRes.data);
+        // Fetch students
+        try {
+          const studentsRes = await getStudentsInCourse(courseId);
+          setStudents(studentsRes.data);
+        } catch (err) {
+          console.error("Error fetching students:", err);
+        }
       } catch (err) {
         setError("Failed to load course details.");
         console.error("Error fetching course:", err);
@@ -128,6 +151,17 @@ function CourseDetailFaculty() {
     } catch (err) {
       setError("Failed to delete file.");
       console.error("Error deleting file:", err);
+    }
+  };
+
+  const handleDeleteCourse = async () => {
+    if (!window.confirm("Are you sure you want to delete this course? This action cannot be undone.")) return;
+    try {
+      await deleteCourse(courseId);
+      navigate('/faculty/courses', { state: { success: "Course deleted successfully!" } });
+    } catch (err) {
+      setError("Failed to delete course. " + (err.response?.data || ""));
+      console.error("Error deleting course:", err);
     }
   };
 
@@ -204,7 +238,7 @@ function CourseDetailFaculty() {
 
   const renderMaterials = () => (
     <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h3 className="text-lg font-semibold text-gray-800">Course Materials</h3>
         <label className="cursor-pointer">
           <input
@@ -227,28 +261,26 @@ function CourseDetailFaculty() {
       ) : (
         <div className="space-y-3">
           {attachments.map((attachment) => (
-            <div key={attachment.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl">{getFileIcon(attachment.fileType)}</span>
-                <div>
-                  <p className="font-medium text-gray-900">{attachment.fileName}</p>
+            <div key={attachment.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200 rounded-lg gap-3">
+              <div className="flex items-center space-x-3 min-w-0 flex-1">
+                <span className="text-2xl flex-shrink-0">{getFileIcon(attachment.fileType)}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-gray-900 truncate">{attachment.fileName}</p>
                   <p className="text-sm text-gray-500">
                     {formatDate(attachment.uploadDate)} • {attachment.fileType}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <a
-                  href={getCourseImageUrl(attachment.fileUrl)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+              <div className="flex items-center space-x-2 flex-shrink-0">
+                <button
+                  onClick={() => downloadFile(attachment.fileUrl, attachment.fileName)}
+                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 whitespace-nowrap"
                 >
                   Download
-                </a>
+                </button>
                 <button
                   onClick={() => handleDeleteAttachment(attachment.id)}
-                  className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                  className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 whitespace-nowrap"
                 >
                   Delete
                 </button>
@@ -262,11 +294,20 @@ function CourseDetailFaculty() {
 
   const renderStudents = () => (
     <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-800 mb-6">Enrolled Students</h3>
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-lg font-semibold text-gray-800">Enrolled Students ({students.length})</h3>
+        <Link
+          to={`/faculty/courses/${courseId}/students`}
+          className="px-4 py-2 border border-primary text-primary rounded-md hover:bg-primary-50"
+        >
+          View Full List
+        </Link>
+      </div>
       
       {students.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           <p>No students enrolled yet.</p>
+          <p className="text-sm mt-2">Students will appear here once they enroll in the course.</p>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -288,17 +329,29 @@ function CourseDetailFaculty() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {students.map((student) => (
-                <tr key={student.id}>
+              {students.slice(0, 5).map((student) => (
+                <tr key={student.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center">
+                      {student.profilePictureUrl ? (
+                        <img
+                          src={getProfileImageUrl(student.profilePictureUrl)}
+                          alt={student.name}
+                          className="h-10 w-10 rounded-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div className={`h-10 w-10 rounded-full bg-primary text-white flex items-center justify-center ${student.profilePictureUrl ? 'hidden' : ''}`}>
                         <span className="text-sm font-medium">
                           {student.name ? student.name.charAt(0).toUpperCase() : 'S'}
                         </span>
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                        <div className="text-sm text-gray-500">ID: {student.id}</div>
                       </div>
                     </div>
                   </td>
@@ -309,14 +362,32 @@ function CourseDetailFaculty() {
                     {formatDate(student.enrolledDate)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">
-                      Active
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      student.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
+                      student.status === 'INACTIVE' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {student.status}
                     </span>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          
+          {students.length > 5 && (
+            <div className="mt-4 text-center">
+              <p className="text-sm text-gray-500">
+                Showing 5 of {students.length} students. 
+                <Link
+                  to={`/faculty/courses/${courseId}/students`}
+                  className="text-primary hover:text-primary-dark ml-1"
+                >
+                  View all students →
+                </Link>
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -338,14 +409,17 @@ function CourseDetailFaculty() {
             <p className="text-gray-600">{course.code}</p>
           </div>
         </div>
-        <div className="flex space-x-3 mt-4 md:mt-0">
+        <div className="flex flex-col space-y-2 mt-4 md:mt-0">
           <Link
             to={`/faculty/courses/${courseId}/edit`}
-            className="px-4 py-2 border border-primary text-primary rounded-md hover:bg-primary-50"
+            className="px-4 py-2 border border-primary text-primary rounded-md hover:bg-primary-50 text-center"
           >
             Edit Course
           </Link>
-          <button className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">
+          <button
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            onClick={handleDeleteCourse}
+          >
             Delete Course
           </button>
         </div>
@@ -397,4 +471,4 @@ function CourseDetailFaculty() {
   );
 }
 
-export default CourseDetailFaculty; 
+export default CourseDetailFaculty;
