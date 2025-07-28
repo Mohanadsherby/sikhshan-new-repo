@@ -300,6 +300,7 @@ public class CourseController {
 			response.setId(enrollment.getStudent().getId());
 			response.setName(enrollment.getStudent().getName());
 			response.setEmail(enrollment.getStudent().getEmail());
+			response.setProfilePictureUrl(enrollment.getStudent().getCloudinaryUrl());
 		}
 		response.setEnrolledDate(enrollment.getEnrollmentDate());
 		response.setStatus(enrollment.getStatus());
@@ -313,6 +314,7 @@ public class CourseController {
 		private String email;
 		private LocalDate enrolledDate;
 		private String status;
+		private String profilePictureUrl;
 
 		// Getters and setters
 		public Long getId() { return id; }
@@ -325,6 +327,8 @@ public class CourseController {
 		public void setEnrolledDate(LocalDate enrolledDate) { this.enrolledDate = enrolledDate; }
 		public String getStatus() { return status; }
 		public void setStatus(String status) { this.status = status; }
+		public String getProfilePictureUrl() { return profilePictureUrl; }
+		public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
 	}
 
 	// Inner class for enrollment request
