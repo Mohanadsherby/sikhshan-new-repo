@@ -8,10 +8,20 @@ public class AssignmentSubmissionResponse {
     private String assignmentName;
     private Long studentId;
     private String studentName;
+    private String studentProfilePictureUrl;
     private LocalDateTime submittedAt;
-    private String fileUrl;
-    private String grade;
+    private LocalDateTime lastModifiedAt;
+    private String status;
+    private String cloudinaryUrl;
+    private String originalFileName;
+    private Double grade;
+    private String letterGrade;
     private String feedback;
+    private LocalDateTime gradedAt;
+    private Integer submissionNumber;
+    private Boolean isLate;
+    private Long courseId;
+    private String courseName;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -28,15 +38,45 @@ public class AssignmentSubmissionResponse {
     public String getStudentName() { return studentName; }
     public void setStudentName(String studentName) { this.studentName = studentName; }
 
+    public String getStudentProfilePictureUrl() { return studentProfilePictureUrl; }
+    public void setStudentProfilePictureUrl(String studentProfilePictureUrl) { this.studentProfilePictureUrl = studentProfilePictureUrl; }
+
     public LocalDateTime getSubmittedAt() { return submittedAt; }
     public void setSubmittedAt(LocalDateTime submittedAt) { this.submittedAt = submittedAt; }
 
-    public String getFileUrl() { return fileUrl; }
-    public void setFileUrl(String fileUrl) { this.fileUrl = fileUrl; }
+    public LocalDateTime getLastModifiedAt() { return lastModifiedAt; }
+    public void setLastModifiedAt(LocalDateTime lastModifiedAt) { this.lastModifiedAt = lastModifiedAt; }
 
-    public String getGrade() { return grade; }
-    public void setGrade(String grade) { this.grade = grade; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    public String getCloudinaryUrl() { return cloudinaryUrl; }
+    public void setCloudinaryUrl(String cloudinaryUrl) { this.cloudinaryUrl = cloudinaryUrl; }
+
+    public String getOriginalFileName() { return originalFileName; }
+    public void setOriginalFileName(String originalFileName) { this.originalFileName = originalFileName; }
+
+    public Double getGrade() { return grade; }
+    public void setGrade(Double grade) { this.grade = grade; }
+
+    public String getLetterGrade() { return letterGrade; }
+    public void setLetterGrade(String letterGrade) { this.letterGrade = letterGrade; }
 
     public String getFeedback() { return feedback; }
     public void setFeedback(String feedback) { this.feedback = feedback; }
+
+    public LocalDateTime getGradedAt() { return gradedAt; }
+    public void setGradedAt(LocalDateTime gradedAt) { this.gradedAt = gradedAt; }
+
+    public Integer getSubmissionNumber() { return submissionNumber; }
+    public void setSubmissionNumber(Integer submissionNumber) { this.submissionNumber = submissionNumber; }
+
+    public Boolean getIsLate() { return isLate; }
+    public void setIsLate(Boolean isLate) { this.isLate = isLate; }
+
+    public Long getCourseId() { return courseId; }
+    public void setCourseId(Long courseId) { this.courseId = courseId; }
+
+    public String getCourseName() { return courseName; }
+    public void setCourseName(String courseName) { this.courseName = courseName; }
 } 
