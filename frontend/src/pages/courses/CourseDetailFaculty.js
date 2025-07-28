@@ -392,21 +392,21 @@ function CourseDetailFaculty() {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h3 className="text-lg font-semibold text-gray-800">Course Materials</h3>
-        <div className="flex space-x-2">
+        <div className="flex items-center space-x-2">
           <button
             onClick={() => openChapterModal()}
-            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
           >
             Create Chapter
           </button>
-          <label className="cursor-pointer">
+          <label className="cursor-pointer flex items-center">
             <input
               type="file"
               className="hidden"
               onChange={handleFileUpload}
               disabled={uploading}
             />
-            <span className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50">
+            <span className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors cursor-pointer">
               {uploading ? "Uploading..." : "Upload Material"}
             </span>
           </label>
