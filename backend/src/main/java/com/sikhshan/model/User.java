@@ -51,6 +51,12 @@ public class User {
 
     @Column(length = 255)
     private String profilePictureUrl;
+    
+    @Column(length = 255)
+    private String cloudinaryPublicId;
+    
+    @Column(length = 255)
+    private String cloudinaryUrl;
 
 	public long getId() {
 		return id;
@@ -146,5 +152,21 @@ public class User {
 
     public void setProfilePictureUrl(String profilePictureUrl) {
         this.profilePictureUrl = profilePictureUrl;
+    }
+    
+    public String getCloudinaryPublicId() {
+        return cloudinaryPublicId;
+    }
+
+    public void setCloudinaryPublicId(String cloudinaryPublicId) {
+        this.cloudinaryPublicId = cloudinaryPublicId;
+    }
+
+    public String getCloudinaryUrl() {
+        return cloudinaryUrl;
+    }
+
+    public void setCloudinaryUrl(String cloudinaryUrl) {
+        this.cloudinaryUrl = cloudinaryUrl;
     }
 }
