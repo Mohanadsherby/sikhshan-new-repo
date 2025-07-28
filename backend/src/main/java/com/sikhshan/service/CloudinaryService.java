@@ -61,6 +61,12 @@ public class CloudinaryService {
      * @return Map containing upload result with public_id and url
      */
     public Map<String, Object> uploadCourseAttachment(MultipartFile file, Long courseId) throws IOException {
+        // Check file size (10MB limit for Cloudinary free tier)
+        long maxSize = 10 * 1024 * 1024; // 10MB in bytes
+        if (file.getSize() > maxSize) {
+            throw new IOException("File size too large. Got " + file.getSize() + ". Maximum is " + maxSize + ". Upgrade your plan to enjoy higher limits https://www.cloudinary.com/pricing/upgrades/file-limit");
+        }
+
         // Get original filename and sanitize it
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null || originalFilename.isEmpty()) {
