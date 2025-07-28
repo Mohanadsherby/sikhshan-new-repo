@@ -49,10 +49,13 @@ public class CourseController {
 		response.setImageUrl(course.getImageUrl());
 		response.setStatus(course.getStatus());
 		response.setCreatedAt(course.getCreatedAt());
+		
 		if (course.getInstructor() != null) {
 			response.setInstructorId(course.getInstructor().getId());
 			response.setInstructor(course.getInstructor().getName());
+			response.setInstructorProfilePictureUrl(course.getInstructor().getCloudinaryUrl());
 		}
+		
 		return response;
 	}
 

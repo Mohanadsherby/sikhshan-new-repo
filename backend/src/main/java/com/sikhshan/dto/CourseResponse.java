@@ -16,6 +16,7 @@ public class CourseResponse {
 	private String status;
 	private LocalDate createdAt;
 	private String instructor;
+	private String instructorProfilePictureUrl;
 
 	public Long getId() {
 		return id;
@@ -119,5 +120,13 @@ public class CourseResponse {
 
 	public void setInstructor(String instructor) {
 		this.instructor = instructor;
+	}
+
+	public String getInstructorProfilePictureUrl() {
+		return instructorProfilePictureUrl;
+	}
+
+	public void setInstructorProfilePictureUrl(String instructorProfilePictureUrl) {
+		this.instructorProfilePictureUrl = instructorProfilePictureUrl;
 	}
 }
