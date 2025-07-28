@@ -265,10 +265,12 @@ function StudentProfile() {
           {isEditing ? (
             <input
               type="text"
+              id="name"
               name="name"
-              value={editedProfile.name}
+              value={editedProfile.name || ''}
               onChange={handleChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+              required
             />
           ) : (
             <p className="mt-1 text-gray-900">{profile.name}</p>
@@ -280,10 +282,12 @@ function StudentProfile() {
           {isEditing ? (
             <input
               type="email"
+              id="email"
               name="email"
-              value={editedProfile.email}
+              value={editedProfile.email || ''}
               onChange={handleChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+              required
             />
           ) : (
             <p className="mt-1 text-gray-900">{profile.email}</p>
@@ -295,8 +299,9 @@ function StudentProfile() {
           {isEditing ? (
             <input
               type="tel"
+              id="phone"
               name="phone"
-              value={editedProfile.phone}
+              value={editedProfile.phone || ''}
               onChange={handleChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
             />
@@ -308,11 +313,12 @@ function StudentProfile() {
         <div>
           <label className="block text-sm font-medium text-gray-700">Address</label>
           {isEditing ? (
-            <input
-              type="text"
+            <textarea
+              id="address"
               name="address"
-              value={editedProfile.address}
+              value={editedProfile.address || ''}
               onChange={handleChange}
+              rows="3"
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
             />
           ) : (
@@ -324,8 +330,9 @@ function StudentProfile() {
           <label className="block text-sm font-medium text-gray-700">Gender</label>
           {isEditing ? (
             <select
+              id="gender"
               name="gender"
-              value={editedProfile.gender}
+              value={editedProfile.gender || ''}
               onChange={handleChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
             >
@@ -343,8 +350,9 @@ function StudentProfile() {
           {isEditing ? (
             <input
               type="date"
+              id="dateOfBirth"
               name="dateOfBirth"
-              value={editedProfile.dateOfBirth}
+              value={editedProfile.dateOfBirth || ''}
               onChange={handleChange}
               className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
             />

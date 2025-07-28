@@ -47,11 +47,13 @@ export const getCourseAttachments = async (courseId) => {
   return axios.get(`${API}/api/courses/${courseId}/attachments`);
 };
 
+// File upload functions with timeout
 export const uploadCourseAttachment = async (courseId, formData) => {
   return axios.post(`${API}/api/courses/${courseId}/attachments`, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
+    timeout: 300000, // 5 minutes timeout for large files
   });
 };
 
@@ -98,4 +100,34 @@ export const uploadCourseImage = async (courseId, formData) => {
 // Get students enrolled in a course
 export const getStudentsInCourse = async (courseId) => {
   return axios.get(`${API}/api/courses/${courseId}/students`);
+}; 
+
+// Chapter API functions
+export const getChaptersByCourse = async (courseId) => {
+  return axios.get(`${API}/api/chapters/course/${courseId}`);
+};
+
+export const getChapterById = async (chapterId) => {
+  return axios.get(`${API}/api/chapters/${chapterId}`);
+};
+
+export const createChapter = async (courseId, chapterData) => {
+  return axios.post(`${API}/api/chapters/course/${courseId}`, chapterData);
+};
+
+export const updateChapter = async (chapterId, chapterData) => {
+  return axios.put(`${API}/api/chapters/${chapterId}`, chapterData);
+};
+
+export const deleteChapter = async (chapterId) => {
+  return axios.delete(`${API}/api/chapters/${chapterId}`);
+};
+
+export const uploadAttachmentToChapter = async (chapterId, formData) => {
+  return axios.post(`${API}/api/chapters/${chapterId}/attachments`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+    timeout: 300000, // 5 minutes timeout for large files
+  });
 }; 
