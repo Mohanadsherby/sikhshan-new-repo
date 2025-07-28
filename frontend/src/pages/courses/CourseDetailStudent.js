@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { getCourseById, unenrollFromCourse, getCourseAttachments, downloadCourseAttachment } from "../../api/courseApi";
+import { getCourseById, unenrollFromCourse, getCourseAttachments, downloadCourseAttachment, getChaptersByCourse } from "../../api/courseApi";
 
 // Helper to format date
 const formatDate = (dateStr) => {
@@ -56,6 +56,7 @@ function CourseDetailStudent() {
   
   const [course, setCourse] = useState(null);
   const [attachments, setAttachments] = useState([]);
+  const [chapters, setChapters] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -75,6 +76,14 @@ function CourseDetailStudent() {
           setAttachments(attachmentsRes.data);
         } catch (err) {
           console.error("Error fetching attachments:", err);
+        }
+
+        // Fetch chapters
+        try {
+          const chaptersRes = await getChaptersByCourse(courseId);
+          setChapters(chaptersRes.data);
+        } catch (err) {
+          console.error("Error fetching chapters:", err);
         }
       } catch (err) {
         setError("Failed to load course details.");
@@ -215,13 +224,55 @@ function CourseDetailStudent() {
     <div className="bg-white rounded-lg shadow p-6">
       <h3 className="text-lg font-semibold text-gray-800 mb-6">Course Materials</h3>
 
-      {attachments.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <p>No materials available yet.</p>
-          <p className="text-sm mt-2">Your instructor will upload course materials soon.</p>
+      {/* Chapters */}
+      {chapters.length > 0 && (
+        <div className="space-y-6 mb-6">
+          {chapters.map((chapter) => (
+            <div key={chapter.id} className="border border-gray-200 rounded-lg p-4">
+              <div className="mb-4">
+                <h4 className="text-lg font-semibold text-gray-800">
+                  Chapter {chapter.chapterNumber}: {chapter.title}
+                </h4>
+                {chapter.description && (
+                  <p className="text-sm text-gray-600 mt-1">{chapter.description}</p>
+                )}
+              </div>
+              
+              {/* Chapter Attachments */}
+              <div className="space-y-3">
+                {chapter.attachments && chapter.attachments.length > 0 ? (
+                  chapter.attachments.map((attachment) => (
+                    <div key={attachment.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border border-gray-100 rounded-lg gap-3">
+                      <div className="flex items-center space-x-3 min-w-0 flex-1">
+                        <span className="text-2xl flex-shrink-0">{getFileIcon(attachment.fileType)}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-gray-900 truncate">{attachment.fileName}</p>
+                          <p className="text-sm text-gray-500">
+                            {formatDate(attachment.uploadDate)} • {attachment.fileType}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => downloadFile(attachment.fileUrl, attachment.fileName)}
+                        className="px-3 py-1 text-sm bg-primary text-white rounded hover:bg-primary-dark whitespace-nowrap flex-shrink-0"
+                      >
+                        Download
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 italic">No materials in this chapter yet.</p>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
-      ) : (
+      )}
+
+      {/* Materials without chapters */}
+      {attachments.length > 0 && (
         <div className="space-y-3">
+          <h4 className="text-md font-semibold text-gray-800 mb-3">General Materials</h4>
           {attachments.map((attachment) => (
             <div key={attachment.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200 rounded-lg gap-3">
               <div className="flex items-center space-x-3 min-w-0 flex-1">
@@ -241,6 +292,14 @@ function CourseDetailStudent() {
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* No materials message */}
+      {chapters.length === 0 && attachments.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <p>No materials available yet.</p>
+          <p className="text-sm mt-2">Your instructor will upload course materials soon.</p>
         </div>
       )}
     </div>
