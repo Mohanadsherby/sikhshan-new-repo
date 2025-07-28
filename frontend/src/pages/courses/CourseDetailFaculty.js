@@ -1,7 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { getCourseById, getCourseAttachments, uploadCourseAttachment, deleteCourseAttachment, deleteCourse, getStudentsInCourse, downloadCourseAttachment } from "../../api/courseApi";
+import { 
+  getCourseById, 
+  getCourseAttachments, 
+  uploadCourseAttachment, 
+  deleteCourseAttachment, 
+  deleteCourse, 
+  getStudentsInCourse, 
+  downloadCourseAttachment,
+  getChaptersByCourse,
+  createChapter,
+  updateChapter,
+  deleteChapter,
+  uploadAttachmentToChapter
+} from "../../api/courseApi";
 
 // Helper to format date
 const formatDate = (dateStr) => {
@@ -56,11 +69,15 @@ function CourseDetailFaculty() {
   
   const [course, setCourse] = useState(null);
   const [attachments, setAttachments] = useState([]);
+  const [chapters, setChapters] = useState([]);
   const [students, setStudents] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [showChapterModal, setShowChapterModal] = useState(false);
+  const [editingChapter, setEditingChapter] = useState(null);
+  const [chapterForm, setChapterForm] = useState({ title: '', description: '', chapterNumber: '' });
 
   useEffect(() => {
     const fetchCourseData = async () => {
@@ -75,6 +92,14 @@ function CourseDetailFaculty() {
           setAttachments(attachmentsRes.data);
         } catch (err) {
           console.error("Error fetching attachments:", err);
+        }
+        
+        // Fetch chapters
+        try {
+          const chaptersRes = await getChaptersByCourse(courseId);
+          setChapters(chaptersRes.data);
+        } catch (err) {
+          console.error("Error fetching chapters:", err);
         }
         
         // Fetch students
@@ -128,15 +153,33 @@ function CourseDetailFaculty() {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Check file size (10MB limit for Cloudinary free tier)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > maxSize) {
+      setError(`File size too large. Maximum size is 10MB for free Cloudinary account. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB. Consider upgrading your Cloudinary plan or using a smaller file.`);
+      return;
+    }
+
     setUploading(true);
+    setError(""); // Clear previous errors
     try {
       const formData = new FormData();
       formData.append('file', file);
       const res = await uploadCourseAttachment(courseId, formData);
       setAttachments(prev => [...prev, res.data]);
     } catch (err) {
-      setError("Failed to upload file.");
       console.error("Error uploading file:", err);
+      if (err.code === 'ERR_NETWORK') {
+        setError("Network error. Please check your connection and try again.");
+      } else if (err.response?.status === 413) {
+        setError("File too large. Please try a smaller file.");
+      } else if (err.response?.data && err.response.data.includes('File size too large')) {
+        setError("File size exceeds Cloudinary's free tier limit (10MB). Please use a smaller file or upgrade your Cloudinary plan.");
+      } else if (err.response?.data) {
+        setError("Failed to upload file: " + err.response.data);
+      } else {
+        setError("Failed to upload file. Please try again.");
+      }
     } finally {
       setUploading(false);
     }
@@ -163,6 +206,115 @@ function CourseDetailFaculty() {
       setError("Failed to delete course. " + (err.response?.data || ""));
       console.error("Error deleting course:", err);
     }
+  };
+
+  const handleCreateChapter = async () => {
+    if (!chapterForm.title || !chapterForm.chapterNumber) {
+      setError("Title and chapter number are required.");
+      return;
+    }
+
+    try {
+      const res = await createChapter(courseId, {
+        title: chapterForm.title,
+        description: chapterForm.description,
+        chapterNumber: parseInt(chapterForm.chapterNumber)
+      });
+      setChapters(prev => [...prev, res.data]);
+      setShowChapterModal(false);
+      setChapterForm({ title: '', description: '', chapterNumber: '' });
+    } catch (err) {
+      setError("Failed to create chapter. " + (err.response?.data || ""));
+      console.error("Error creating chapter:", err);
+    }
+  };
+
+  const handleUpdateChapter = async () => {
+    if (!editingChapter || !chapterForm.title || !chapterForm.chapterNumber) {
+      setError("Title and chapter number are required.");
+      return;
+    }
+
+    try {
+      const res = await updateChapter(editingChapter.id, {
+        title: chapterForm.title,
+        description: chapterForm.description,
+        chapterNumber: parseInt(chapterForm.chapterNumber)
+      });
+      setChapters(prev => prev.map(ch => ch.id === editingChapter.id ? res.data : ch));
+      setShowChapterModal(false);
+      setEditingChapter(null);
+      setChapterForm({ title: '', description: '', chapterNumber: '' });
+    } catch (err) {
+      setError("Failed to update chapter. " + (err.response?.data || ""));
+      console.error("Error updating chapter:", err);
+    }
+  };
+
+  const handleDeleteChapter = async (chapterId) => {
+    if (!window.confirm("Are you sure you want to delete this chapter? Attachments will be moved to 'No Chapter'.")) return;
+    
+    try {
+      await deleteChapter(chapterId);
+      setChapters(prev => prev.filter(ch => ch.id !== chapterId));
+    } catch (err) {
+      setError("Failed to delete chapter. " + (err.response?.data || ""));
+      console.error("Error deleting chapter:", err);
+    }
+  };
+
+  const handleUploadToChapter = async (chapterId, file) => {
+    // Check file size (10MB limit for Cloudinary free tier)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
+    if (file.size > maxSize) {
+      setError(`File size too large. Maximum size is 10MB for free Cloudinary account. Your file is ${(file.size / (1024 * 1024)).toFixed(2)}MB. Consider upgrading your Cloudinary plan or using a smaller file.`);
+      return;
+    }
+
+    setUploading(true);
+    setError(""); // Clear previous errors
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await uploadAttachmentToChapter(chapterId, formData);
+      
+      // Update chapters with new attachment
+      setChapters(prev => prev.map(ch => 
+        ch.id === chapterId 
+          ? { ...ch, attachments: [...ch.attachments, res.data] }
+          : ch
+      ));
+    } catch (err) {
+      console.error("Error uploading file to chapter:", err);
+      if (err.code === 'ERR_NETWORK') {
+        setError("Network error. Please check your connection and try again.");
+      } else if (err.response?.status === 413) {
+        setError("File too large. Please try a smaller file.");
+      } else if (err.response?.data && err.response.data.includes('File size too large')) {
+        setError("File size exceeds Cloudinary's free tier limit (10MB). Please use a smaller file or upgrade your Cloudinary plan.");
+      } else if (err.response?.data) {
+        setError("Failed to upload file to chapter: " + err.response.data);
+      } else {
+        setError("Failed to upload file to chapter. Please try again.");
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const openChapterModal = (chapter = null) => {
+    if (chapter) {
+      setEditingChapter(chapter);
+      setChapterForm({
+        title: chapter.title,
+        description: chapter.description || '',
+        chapterNumber: chapter.chapterNumber.toString()
+      });
+    } else {
+      setEditingChapter(null);
+      setChapterForm({ title: '', description: '', chapterNumber: '' });
+    }
+    setShowChapterModal(true);
   };
 
   const renderOverview = () => (
@@ -240,53 +392,213 @@ function CourseDetailFaculty() {
     <div className="bg-white rounded-lg shadow p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h3 className="text-lg font-semibold text-gray-800">Course Materials</h3>
-        <label className="cursor-pointer">
-          <input
-            type="file"
-            className="hidden"
-            onChange={handleFileUpload}
-            disabled={uploading}
-          />
-          <span className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50">
-            {uploading ? "Uploading..." : "Upload Material"}
-          </span>
-        </label>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => openChapterModal()}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+          >
+            Create Chapter
+          </button>
+          <label className="cursor-pointer flex items-center">
+            <input
+              type="file"
+              className="hidden"
+              onChange={handleFileUpload}
+              disabled={uploading}
+            />
+            <span className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 transition-colors cursor-pointer">
+              {uploading ? "Uploading..." : "Upload Material"}
+            </span>
+          </label>
+        </div>
       </div>
 
-      {attachments.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          <p>No materials uploaded yet.</p>
-          <p className="text-sm mt-2">Upload course materials to help your students learn better.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {attachments.map((attachment) => (
-            <div key={attachment.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200 rounded-lg gap-3">
-              <div className="flex items-center space-x-3 min-w-0 flex-1">
-                <span className="text-2xl flex-shrink-0">{getFileIcon(attachment.fileType)}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-gray-900 truncate">{attachment.fileName}</p>
-                  <p className="text-sm text-gray-500">
-                    {formatDate(attachment.uploadDate)} • {attachment.fileType}
-                  </p>
+      {/* Chapters */}
+      {chapters.length > 0 && (
+        <div className="space-y-6 mb-6">
+          {chapters.map((chapter) => (
+            <div key={chapter.id} className="border border-gray-200 rounded-lg p-4">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h4 className="text-lg font-semibold text-gray-800">
+                    Chapter {chapter.chapterNumber}: {chapter.title}
+                  </h4>
+                  {chapter.description && (
+                    <p className="text-sm text-gray-600 mt-1">{chapter.description}</p>
+                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => openChapterModal(chapter)}
+                    className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteChapter(chapter.id)}
+                    className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200"
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center space-x-2 flex-shrink-0">
-                <button
-                  onClick={() => downloadFile(attachment.fileUrl, attachment.fileName)}
-                  className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 whitespace-nowrap"
-                >
-                  Download
-                </button>
-                <button
-                  onClick={() => handleDeleteAttachment(attachment.id)}
-                  className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 whitespace-nowrap"
-                >
-                  Delete
-                </button>
+              
+              {/* Chapter Attachments */}
+              <div className="space-y-3">
+                {chapter.attachments && chapter.attachments.length > 0 ? (
+                  chapter.attachments.map((attachment) => (
+                    <div key={attachment.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 border border-gray-100 rounded-lg gap-3">
+                      <div className="flex items-center space-x-3 min-w-0 flex-1">
+                        <span className="text-2xl flex-shrink-0">{getFileIcon(attachment.fileType)}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-gray-900 truncate">{attachment.fileName}</p>
+                          <p className="text-sm text-gray-500">
+                            {formatDate(attachment.uploadDate)} • {attachment.fileType}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2 flex-shrink-0">
+                        <button
+                          onClick={() => downloadFile(attachment.fileUrl, attachment.fileName)}
+                          className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 whitespace-nowrap"
+                        >
+                          Download
+                        </button>
+                        <button
+                          onClick={() => handleDeleteAttachment(attachment.id)}
+                          className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 whitespace-nowrap"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-gray-500 italic">No materials in this chapter yet.</p>
+                )}
+                
+                {/* Upload to Chapter */}
+                <label className="cursor-pointer block">
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) handleUploadToChapter(chapter.id, file);
+                    }}
+                    disabled={uploading}
+                  />
+                  <span className="inline-block px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 disabled:opacity-50">
+                    {uploading ? "Uploading..." : "+ Add Material to Chapter"}
+                  </span>
+                </label>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Materials without chapters */}
+      {attachments.filter(a => !a.chapterId).length > 0 && (
+        <div className="border-t pt-6">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4">Other Materials</h4>
+          <div className="space-y-3">
+            {attachments.filter(a => !a.chapterId).map((attachment) => (
+              <div key={attachment.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border border-gray-200 rounded-lg gap-3">
+                <div className="flex items-center space-x-3 min-w-0 flex-1">
+                  <span className="text-2xl flex-shrink-0">{getFileIcon(attachment.fileType)}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-900 truncate">{attachment.fileName}</p>
+                    <p className="text-sm text-gray-500">
+                      {formatDate(attachment.uploadDate)} • {attachment.fileType}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 flex-shrink-0">
+                  <button
+                    onClick={() => downloadFile(attachment.fileUrl, attachment.fileName)}
+                    className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 whitespace-nowrap"
+                  >
+                    Download
+                  </button>
+                  <button
+                    onClick={() => handleDeleteAttachment(attachment.id)}
+                    className="px-3 py-1 text-sm bg-red-100 text-red-700 rounded hover:bg-red-200 whitespace-nowrap"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {chapters.length === 0 && attachments.filter(a => !a.chapterId).length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <p>No materials uploaded yet.</p>
+          <p className="text-sm mt-2">Create chapters and upload course materials to help your students learn better.</p>
+        </div>
+      )}
+
+      {/* Chapter Modal */}
+      {showChapterModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              {editingChapter ? 'Edit Chapter' : 'Create New Chapter'}
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Chapter Number</label>
+                <input
+                  type="number"
+                  value={chapterForm.chapterNumber}
+                  onChange={(e) => setChapterForm(prev => ({ ...prev, chapterNumber: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={chapterForm.title}
+                  onChange={(e) => setChapterForm(prev => ({ ...prev, title: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  placeholder="Introduction to Course"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
+                <textarea
+                  value={chapterForm.description}
+                  onChange={(e) => setChapterForm(prev => ({ ...prev, description: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                  rows="3"
+                  placeholder="Brief description of this chapter..."
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowChapterModal(false);
+                  setEditingChapter(null);
+                  setChapterForm({ title: '', description: '', chapterNumber: '' });
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={editingChapter ? handleUpdateChapter : handleCreateChapter}
+                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
+              >
+                {editingChapter ? 'Update Chapter' : 'Create Chapter'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
