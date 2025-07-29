@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import { useNavigate, useParams } from "react-router-dom"
-import { getQuizForStudent, startQuizAttempt, submitQuizAttempt, getTimeRemaining, getStudentAttemptForQuiz } from "../../api/quizApi"
+import { getQuizById, startQuizAttempt, submitQuizAttempt, getTimeRemaining, getStudentAttemptForQuiz } from "../../api/quizApi"
 import { formatTimeRemaining } from "../../api/quizApi"
 
 function QuizAttemptStudent() {
@@ -45,7 +45,7 @@ function QuizAttemptStudent() {
       setLoading(true)
       
       // Get quiz data
-      const quizRes = await getQuizForStudent(quizId)
+      const quizRes = await getQuizById(quizId)
       setQuiz(quizRes.data)
       
       // Check if student already has an attempt for this quiz

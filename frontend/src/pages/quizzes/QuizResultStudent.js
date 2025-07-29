@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import { useNavigate, useParams, useLocation } from "react-router-dom"
-import { getQuizForStudent, getStudentAttemptForQuiz } from "../../api/quizApi"
+import { getQuizById, getStudentAttemptForQuiz } from "../../api/quizApi"
 import { formatDate, calculateLetterGrade, getPerformanceDescription } from "../../api/quizApi"
 
 function QuizResultStudent() {
@@ -27,7 +27,7 @@ function QuizResultStudent() {
       setLoading(true)
       
       // Fetch quiz details
-      const quizRes = await getQuizForStudent(quizId)
+      const quizRes = await getQuizById(quizId)
       setQuiz(quizRes.data)
       
       // Fetch student's attempt

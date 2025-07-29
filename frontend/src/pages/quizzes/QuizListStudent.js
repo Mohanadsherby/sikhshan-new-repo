@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import { useNavigate, useLocation } from "react-router-dom"
-import { getActiveQuizzesByCourse, getAttemptsByStudent } from "../../api/quizApi"
+import { getActiveQuizzesByCourse, getAttemptsByStudent, getQuizzesByCourse } from "../../api/quizApi"
 import { getCoursesByStudent } from "../../api/courseApi"
 import { formatDate, getQuizStatus, isQuizActive, isQuizOverdue, formatTimeRemaining } from "../../api/quizApi"
 
@@ -36,27 +36,32 @@ function QuizListStudent() {
       
       // Fetch enrolled courses
       const coursesRes = await getCoursesByStudent(currentUser.id)
+      console.log('Enrolled courses:', coursesRes.data)
       setEnrolledCourses(coursesRes.data)
       
       // Fetch student attempts
       const attemptsRes = await getAttemptsByStudent(currentUser.id)
+      console.log('Student attempts:', attemptsRes.data)
       setStudentAttempts(attemptsRes.data)
       
-      // Fetch active quizzes for all enrolled courses
+      // Fetch ALL quizzes for all enrolled courses (not just active ones)
       const courseIds = coursesRes.data.map(course => course.courseId || course.id).filter(Boolean)
-      console.log('Enrolled courses:', coursesRes.data)
-      console.log('Course IDs:', courseIds)
+      console.log('Course IDs to fetch quizzes for:', courseIds)
       const allQuizzes = []
       
       for (const courseId of courseIds) {
         try {
-          const quizzesRes = await getActiveQuizzesByCourse(courseId)
+          console.log(`Fetching ALL quizzes for course ${courseId}...`)
+          // Use getQuizzesByCourse instead of getActiveQuizzesByCourse to get all quizzes
+          const quizzesRes = await getQuizzesByCourse(courseId)
+          console.log(`Quizzes for course ${courseId}:`, quizzesRes.data)
           allQuizzes.push(...quizzesRes.data)
         } catch (err) {
           console.error(`Error fetching quizzes for course ${courseId}:`, err)
         }
       }
       
+      console.log('All quizzes found:', allQuizzes)
       setQuizzes(allQuizzes)
     } catch (err) {
       console.error("Error fetching data:", err)
@@ -186,9 +191,16 @@ function QuizListStudent() {
       {quizzes.length === 0 ? (
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
           <h2 className="text-xl font-semibold text-gray-800 mb-2">No Quizzes Available</h2>
-          <p className="text-gray-600">
+          <p className="text-gray-600 mb-4">
             There are no quizzes available for your enrolled courses at the moment.
           </p>
+          <div className="text-sm text-gray-500 text-left bg-gray-50 p-4 rounded">
+            <p><strong>Debug Info:</strong></p>
+            <p>Total quizzes found: {quizzes.length}</p>
+            <p>Enrolled courses: {enrolledCourses.length}</p>
+            <p>Student attempts: {studentAttempts.length}</p>
+            <p>Current user ID: {currentUser?.id}</p>
+          </div>
         </div>
       ) : (
         <div className="space-y-8">
