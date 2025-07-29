@@ -32,13 +32,13 @@ import CourseDetailStudent from "./pages/courses/CourseDetailStudent"
 import CourseStudentListFaculty from "./pages/courses/CourseStudentListFaculty";
 
 // Assignment Pages
-import AssignmentCreation from "./pages/assignments/AssignmentCreation"
-import AssignmentSubmission from "./pages/assignments/AssignmentSubmission"
-import AssignmentView from "./pages/assignments/AssignmentView"
-import CompletedAssignmentView from "./pages/assignments/CompletedAssignmentView"
+import AssignmentCreateFaculty from "./pages/assignments/AssignmentCreateFaculty"
+import AssignmentSubmitStudent from "./pages/assignments/AssignmentSubmitStudent"
+import AssignmentListStudent from "./pages/assignments/AssignmentListStudent"
+import AssignmentDetailStudent from "./pages/assignments/AssignmentDetailStudent"
 import AssignmentListFaculty from "./pages/assignments/AssignmentListFaculty"
-import FacultyAssignmentView from "./pages/assignments/FacultyAssignmentView"
-import FacultyAssignmentGrade from "./pages/assignments/FacultyAssignmentGrade"
+import AssignmentDetailFaculty from "./pages/assignments/AssignmentDetailFaculty"
+import AssignmentEditFaculty from "./pages/assignments/AssignmentEditFaculty"
 
 // Quiz Pages
 import QuizAttempt from "./pages/quizzes/QuizAttempt"
@@ -93,10 +93,11 @@ function App() {
             <Route path="courses/:courseId/edit" element={<CourseEditFaculty />} />
             <Route path="courses/:courseId" element={<CourseDetailFaculty />} />
             <Route path="courses/:courseId/students" element={<CourseStudentListFaculty />} />
-            <Route path="assignments/create" element={<AssignmentCreation />} />
+            <Route path="assignments/create" element={<AssignmentCreateFaculty />} />
             <Route path="assignments" element={<AssignmentListFaculty />} />
-            <Route path="assignments/:id/view" element={<FacultyAssignmentView />} />
-            <Route path="assignments/:assignmentId/grade/:submissionId" element={<FacultyAssignmentGrade />} />
+            <Route path="assignments/:id" element={<AssignmentDetailFaculty />} />
+            <Route path="assignments/:id/edit" element={<AssignmentEditFaculty />} />
+            <Route path="assignments/:assignmentId/grade/:submissionId" element={<AssignmentDetailFaculty />} />
             <Route path="quizzes" element={<QuizListFaculty />} />
             <Route path="quizzes/create" element={<QuizCreation />} />
             <Route path="quizzes/:id/view" element={<FacultyQuizView />} />
@@ -137,9 +138,10 @@ function App() {
             <Route path="courses/enroll" element={<EnrollCourseStudent />} />
             <Route path="courses/unenroll" element={<UnenrollCourseStudent />} />
             <Route path="courses/:courseId" element={<CourseDetailStudent />} />
-            <Route path="assignments/submit" element={<AssignmentSubmission />} />
-            <Route path="assignments/:id/submit" element={<AssignmentView />} />
-            <Route path="assignments/:id/view" element={<CompletedAssignmentView />} />
+            {/* Student Assignment Routes */}
+            <Route path="assignments" element={<AssignmentListStudent />} />
+            <Route path="assignments/:id/submit" element={<AssignmentSubmitStudent />} />
+            <Route path="assignments/:id" element={<AssignmentDetailStudent />} />
             <Route path="quizzes/attempt" element={<QuizAttempt />} />
             <Route path="quizzes/:id/view" element={<QuizAttempt />} />
             <Route path="profile" element={<Profile />} />

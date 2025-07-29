@@ -235,7 +235,7 @@ function StudentDashboard() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold text-gray-800">Upcoming Assignments</h2>
             <Link
-              to="/student/assignments/submit"
+              to="/student/assignments"
               className="text-sm text-primary hover:text-primary-dark transition-colors duration-200"
             >
               View All
