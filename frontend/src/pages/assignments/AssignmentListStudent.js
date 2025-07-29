@@ -384,7 +384,7 @@ function AssignmentListStudent() {
                                                 Submit Assignment
                                             </button>
                                         )}
-                                        {submission && !submission.grade && (
+                                        {submission && (
                                             <button
                                                 onClick={() => handleSubmitAssignment(assignment.id)}
                                                 className="px-3 py-1 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700"
