@@ -249,7 +249,20 @@ function AssignmentDetailFaculty() {
                             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-2">
-                                        <h4 className="font-medium text-gray-900">{submission.studentName}</h4>
+                                        <div className="flex items-center gap-2">
+                                            {submission.studentProfilePictureUrl ? (
+                                                <img 
+                                                    src={submission.studentProfilePictureUrl} 
+                                                    alt={submission.studentName}
+                                                    className="w-8 h-8 rounded-full object-cover"
+                                                />
+                                            ) : (
+                                                <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-600">
+                                                    {submission.studentName ? submission.studentName.charAt(0).toUpperCase() : '?'}
+                                                </div>
+                                            )}
+                                            <h4 className="font-medium text-gray-900">{submission.studentName || 'Unknown Student'}</h4>
+                                        </div>
                                         {getSubmissionStatusBadge(submission)}
                                         {submission.isLate && (
                                             <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
@@ -383,9 +396,25 @@ function AssignmentDetailFaculty() {
             {showGradeModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                            Grade Submission - {selectedSubmission?.studentName}
-                        </h3>
+                        <div className="flex items-center gap-3 mb-4">
+                            {selectedSubmission?.studentProfilePictureUrl ? (
+                                <img 
+                                    src={selectedSubmission.studentProfilePictureUrl} 
+                                    alt={selectedSubmission.studentName}
+                                    className="w-10 h-10 rounded-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-sm font-medium text-gray-600">
+                                    {selectedSubmission?.studentName ? selectedSubmission.studentName.charAt(0).toUpperCase() : '?'}
+                                </div>
+                            )}
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-800">
+                                    Grade Submission
+                                </h3>
+                                <p className="text-sm text-gray-600">{selectedSubmission?.studentName || 'Unknown Student'}</p>
+                            </div>
+                        </div>
                         
                         <div className="space-y-4">
                             <div>
