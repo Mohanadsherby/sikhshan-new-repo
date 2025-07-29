@@ -46,6 +46,12 @@ import QuizListFaculty from "./pages/quizzes/QuizListFaculty"
 import FacultyQuizView from "./pages/quizzes/FacultyQuizView"
 import FacultyQuizGrade from "./pages/quizzes/FacultyQuizGrade"
 import QuizCreation from "./pages/quizzes/QuizCreation"
+import QuizEditFaculty from "./pages/quizzes/QuizEditFaculty"
+import QuizDetailFaculty from "./pages/quizzes/QuizDetailFaculty"
+import QuizListStudent from "./pages/quizzes/QuizListStudent"
+import QuizDetailStudent from "./pages/quizzes/QuizDetailStudent"
+import QuizAttemptStudent from "./pages/quizzes/QuizAttemptStudent"
+import QuizResultStudent from "./pages/quizzes/QuizResultStudent"
 
 // Other Pages
 import Chat from "./pages/communication/Chat"
@@ -100,8 +106,10 @@ function App() {
             <Route path="assignments/:assignmentId/grade/:submissionId" element={<AssignmentDetailFaculty />} />
             <Route path="quizzes" element={<QuizListFaculty />} />
             <Route path="quizzes/create" element={<QuizCreation />} />
-            <Route path="quizzes/:id/view" element={<FacultyQuizView />} />
-            <Route path="quizzes/:quizId/grade/:submissionId" element={<FacultyQuizGrade />} />
+            <Route path="quizzes/:quizId" element={<QuizDetailFaculty />} />
+            <Route path="quizzes/:quizId/edit" element={<QuizEditFaculty />} />
+            <Route path="quizzes/:quizId/view" element={<FacultyQuizView />} />
+            <Route path="quizzes/:quizId/grade/:attemptId" element={<FacultyQuizGrade />} />
             <Route path="chat" element={<Chat />} />
             <Route path="calendar" element={<Calendar />} />
             <Route path="profile" element={<Profile />} />
@@ -142,8 +150,10 @@ function App() {
             <Route path="assignments" element={<AssignmentListStudent />} />
             <Route path="assignments/:id/submit" element={<AssignmentSubmitStudent />} />
             <Route path="assignments/:id" element={<AssignmentDetailStudent />} />
-            <Route path="quizzes/attempt" element={<QuizAttempt />} />
-            <Route path="quizzes/:id/view" element={<QuizAttempt />} />
+            <Route path="quizzes" element={<QuizListStudent />} />
+            <Route path="quizzes/:quizId" element={<QuizDetailStudent />} />
+            <Route path="quizzes/:quizId/attempt" element={<QuizAttemptStudent />} />
+            <Route path="quizzes/:quizId/result" element={<QuizResultStudent />} />
             <Route path="profile" element={<Profile />} />
             <Route path="notifications" element={<AllNotifications />} />
             <Route path="plagiarism" element={<PlagiarismResults />} />

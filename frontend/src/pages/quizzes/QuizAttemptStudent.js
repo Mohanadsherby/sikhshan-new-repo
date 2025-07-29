@@ -2,21 +2,21 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
-import { useParams, useNavigate } from "react-router-dom"
-import { getQuizForStudent, startQuizAttempt, submitQuizAttempt, getTimeRemaining } from "../../api/quizApi"
+import { useNavigate, useParams } from "react-router-dom"
+import { getQuizForStudent, startQuizAttempt, submitQuizAttempt, getTimeRemaining, getStudentAttemptForQuiz } from "../../api/quizApi"
 import { formatTimeRemaining } from "../../api/quizApi"
 
-function QuizAttempt() {
+function QuizAttemptStudent() {
   const { currentUser } = useAuth()
-  const { quizId } = useParams()
   const navigate = useNavigate()
+  const { quizId } = useParams()
   const [quiz, setQuiz] = useState(null)
   const [attempt, setAttempt] = useState(null)
   const [answers, setAnswers] = useState({})
-  const [timeRemaining, setTimeRemaining] = useState(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const [timeRemaining, setTimeRemaining] = useState(null)
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false)
 
   useEffect(() => {
@@ -41,20 +41,37 @@ function QuizAttempt() {
   }, [timeRemaining])
 
   const initializeQuiz = async () => {
-    if (!currentUser?.id || !quizId) return
-
     try {
       setLoading(true)
       
-      // Fetch quiz details
+      // Get quiz data
       const quizRes = await getQuizForStudent(quizId)
       setQuiz(quizRes.data)
       
-      // Start or continue quiz attempt
+      // Check if student already has an attempt for this quiz
       try {
-        const attemptRes = await startQuizAttempt({
+        const existingAttemptRes = await getStudentAttemptForQuiz(quizId, currentUser.id)
+        if (existingAttemptRes.data) {
+          setAttempt(existingAttemptRes.data)
+          // If attempt is in progress, start timer
+          if (existingAttemptRes.data.status === 'IN_PROGRESS') {
+            startTimer()
+          }
+          return
+        }
+      } catch (err) {
+        // No existing attempt found, continue to start new one
+      }
+      
+      // Start new quiz attempt
+      try {
+        console.log('Starting new quiz attempt with data:', {
           quizId: parseInt(quizId),
           studentId: currentUser.id
+        })
+        const attemptRes = await startQuizAttempt({
+          quizId: parseInt(quizId),
+          studentId: parseInt(currentUser.id) // Convert to integer
         })
         setAttempt(attemptRes.data)
         
@@ -62,6 +79,7 @@ function QuizAttempt() {
         startTimer()
       } catch (err) {
         console.error("Error starting quiz attempt:", err)
+        console.error("Error response:", err.response?.data)
         setError(err.response?.data || "Failed to start quiz")
       }
     } catch (err) {
@@ -325,4 +343,4 @@ function QuizAttempt() {
   )
 }
 
-export default QuizAttempt
+export default QuizAttemptStudent 

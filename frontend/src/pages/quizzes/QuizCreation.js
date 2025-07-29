@@ -1,31 +1,58 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
 import { useNavigate } from "react-router-dom"
+import { createQuiz } from "../../api/quizApi"
+import { getCoursesByInstructor } from "../../api/courseApi"
 
 function QuizCreation() {
   const { currentUser } = useAuth()
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
-    title: "",
-    course: "",
+    name: "",
+    courseId: "",
     description: "",
     startDate: "",
     startTime: "",
-    duration: "",
-    totalPoints: "",
-    shuffleQuestions: false,
-    showResults: "immediately",
+    durationMinutes: "",
+    totalPoints: 0, // Will be calculated automatically
+    status: "ACTIVE",
     questions: [],
   })
+  const [courses, setCourses] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [saving, setSaving] = useState(false)
 
-  // Mock courses for dropdown
-  const courses = [
-    { id: 1, name: "Introduction to Computer Science", code: "CS101" },
-    { id: 2, name: "Data Structures and Algorithms", code: "CS201" },
-    { id: 3, name: "Database Management Systems", code: "CS301" },
-  ]
+  const calculateTotalPoints = (questions) => {
+    return questions.reduce((total, question) => total + (question.points || 0), 0)
+  }
+
+  const updateTotalPoints = () => {
+    const total = calculateTotalPoints(formData.questions)
+    setFormData(prev => ({ ...prev, totalPoints: total }))
+  }
+
+  // Update total points whenever questions change
+  useEffect(() => {
+    updateTotalPoints()
+  }, [formData.questions])
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      if (currentUser?.id) {
+        try {
+          const response = await getCoursesByInstructor(currentUser.id)
+          setCourses(response.data)
+        } catch (err) {
+          console.error("Error fetching courses:", err)
+          setError("Failed to load courses")
+        }
+      }
+    }
+    fetchCourses()
+  }, [])
 
   // Redirect if not faculty
   if (currentUser?.role !== "FACULTY") {
@@ -43,17 +70,16 @@ function QuizCreation() {
   const addQuestion = (type) => {
     const newQuestion = {
       id: Date.now(),
-      type,
+      type: type.toUpperCase(),
       text: "",
       points: 1,
-      options:
-        type === "multiple_choice"
-          ? [
-              { id: Date.now() + 1, text: "", isCorrect: false },
-              { id: Date.now() + 2, text: "", isCorrect: false },
-            ]
-          : [],
-      answer: type === "true_false" ? "true" : "",
+      correctAnswer: type === "TRUE_FALSE" ? "true" : "",
+      options: type === "MULTIPLE_CHOICE" 
+        ? [
+            { id: Date.now() + 1, text: "", isCorrect: false },
+            { id: Date.now() + 2, text: "", isCorrect: false },
+          ]
+        : [],
     }
 
     setFormData({
@@ -135,25 +161,69 @@ function QuizCreation() {
     })
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Here you would typically send the data to your backend
-    console.log("Quiz created:", formData)
-    alert("Quiz created successfully!")
+    setSaving(true)
+    setError("")
 
-    // Reset form
-    setFormData({
-      title: "",
-      course: "",
-      description: "",
-      startDate: "",
-      startTime: "",
-      duration: "",
-      totalPoints: "",
-      shuffleQuestions: false,
-      showResults: "immediately",
-      questions: [],
-    })
+    try {
+      // Validate required fields
+      if (!formData.name || !formData.courseId || !formData.startDate || !formData.startTime || !formData.durationMinutes) {
+        setError("Please fill in all required fields")
+        return
+      }
+
+      if (formData.questions.length === 0) {
+        setError("Please add at least one question")
+        return
+      }
+
+      // Parse the date and time inputs
+      const [year, month, day] = formData.startDate.split('-').map(Number)
+      const [hours, minutes] = formData.startTime.split(':').map(Number)
+      
+      // Create date in local timezone (assuming browser is in Kathmandu timezone)
+      const localDateTime = new Date(year, month - 1, day, hours, minutes)
+      
+      // Convert to UTC by subtracting the timezone offset
+      const utcDateTime = new Date(localDateTime.getTime() - (localDateTime.getTimezoneOffset() * 60000))
+
+      // Prepare quiz data for backend
+      const quizData = {
+        name: formData.name,
+        description: formData.description,
+        startDateTime: utcDateTime.toISOString(),
+        durationMinutes: parseInt(formData.durationMinutes),
+        totalPoints: parseInt(formData.totalPoints),
+        status: formData.status,
+        courseId: parseInt(formData.courseId),
+        instructorId: currentUser.id,
+        questions: formData.questions.map(q => ({
+          text: q.text,
+          type: q.type,
+          points: parseInt(q.points),
+          correctAnswer: q.correctAnswer,
+          options: q.options?.map(o => ({
+            text: o.text,
+            isCorrect: o.isCorrect
+          })) || []
+        }))
+      }
+
+      // Create quiz
+      const response = await createQuiz(quizData)
+      
+      alert("Quiz created successfully!")
+      navigate('/faculty/quizzes', { 
+        state: { success: "Quiz created successfully!", refresh: true } 
+      })
+
+    } catch (err) {
+      console.error("Error creating quiz:", err)
+      setError(err.response?.data || "Failed to create quiz. Please try again.")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -167,19 +237,25 @@ function QuizCreation() {
       </button>
       <h1 className="text-3xl font-bold text-gray-800 mb-6">Create Quiz</h1>
 
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {error}
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow p-6">
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Title */}
             <div className="col-span-2">
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                 Quiz Title
               </label>
               <input
                 type="text"
-                id="title"
-                name="title"
-                value={formData.title}
+                id="name"
+                name="name"
+                value={formData.name}
                 onChange={handleChange}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
@@ -188,20 +264,20 @@ function QuizCreation() {
 
             {/* Course */}
             <div>
-              <label htmlFor="course" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="courseId" className="block text-sm font-medium text-gray-700 mb-1">
                 Course
               </label>
-              <select
-                id="course"
-                name="course"
-                value={formData.course}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-              >
+                              <select
+                  id="courseId"
+                  name="courseId"
+                  value={formData.courseId}
+                  onChange={handleChange}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                >
                 <option value="">Select a course</option>
                 {courses.map((course) => (
-                  <option key={course.id} value={course.code}>
+                  <option key={course.id} value={course.id}>
                     {course.code} - {course.name}
                   </option>
                 ))}
@@ -211,18 +287,19 @@ function QuizCreation() {
             {/* Total Points */}
             <div>
               <label htmlFor="totalPoints" className="block text-sm font-medium text-gray-700 mb-1">
-                Total Points
+                Total Points (Auto-calculated)
               </label>
               <input
                 type="number"
                 id="totalPoints"
                 name="totalPoints"
                 value={formData.totalPoints}
-                onChange={handleChange}
-                required
-                min="1"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
+                readOnly
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Calculated from the sum of all question points
+              </p>
             </div>
 
             {/* Start Date */}
@@ -265,8 +342,8 @@ function QuizCreation() {
               <input
                 type="number"
                 id="duration"
-                name="duration"
-                value={formData.duration}
+                name="durationMinutes"
+                value={formData.durationMinutes}
                 onChange={handleChange}
                 required
                 min="1"
@@ -281,14 +358,14 @@ function QuizCreation() {
               </label>
               <select
                 id="showResults"
-                name="showResults"
-                value={formData.showResults}
+                name="status"
+                value={formData.status}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
               >
-                <option value="immediately">Immediately after submission</option>
-                <option value="after_due">After due date</option>
-                <option value="manual">Manual release</option>
+                <option value="ACTIVE">Immediately after submission</option>
+                <option value="INACTIVE">After due date</option>
+                <option value="DRAFT">Manual release</option>
               </select>
             </div>
 
@@ -403,7 +480,7 @@ function QuizCreation() {
                     </div>
 
                     {/* Question type specific fields */}
-                    {question.type === "multiple_choice" && (
+                    {question.type === "MULTIPLE_CHOICE" && (
                       <div>
                         <div className="flex justify-between items-center mb-2">
                           <label className="block text-sm font-medium text-gray-700">Options</label>
@@ -420,8 +497,26 @@ function QuizCreation() {
                           <div key={option.id} className="flex items-center space-x-2 mb-2">
                             <input
                               type="radio"
+                              name={`correct-${question.id}`}
                               checked={option.isCorrect}
-                              onChange={() => handleOptionChange(question.id, option.id, "isCorrect", true)}
+                              onChange={() => {
+                                // Set all options to false, then set this one to true
+                                setFormData({
+                                  ...formData,
+                                  questions: formData.questions.map((q) => {
+                                    if (q.id === question.id) {
+                                      return {
+                                        ...q,
+                                        options: q.options.map((o) => ({
+                                          ...o,
+                                          isCorrect: o.id === option.id
+                                        }))
+                                      }
+                                    }
+                                    return q
+                                  })
+                                })
+                              }}
                               className="focus:ring-primary h-4 w-4 text-primary border-gray-300"
                             />
                             <input
@@ -446,7 +541,7 @@ function QuizCreation() {
                       </div>
                     )}
 
-                    {question.type === "true_false" && (
+                    {question.type === "TRUE_FALSE" && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Correct Answer</label>
                         <div className="flex space-x-4">
@@ -454,8 +549,9 @@ function QuizCreation() {
                             <input
                               type="radio"
                               id={`true-${question.id}`}
-                              checked={question.answer === "true"}
-                              onChange={() => handleQuestionChange(question.id, "answer", "true")}
+                              name={`correct-${question.id}`}
+                              checked={question.correctAnswer === "true"}
+                              onChange={() => handleQuestionChange(question.id, "correctAnswer", "true")}
                               className="focus:ring-primary h-4 w-4 text-primary border-gray-300"
                             />
                             <label htmlFor={`true-${question.id}`} className="ml-2 block text-sm text-gray-700">
@@ -466,8 +562,9 @@ function QuizCreation() {
                             <input
                               type="radio"
                               id={`false-${question.id}`}
-                              checked={question.answer === "false"}
-                              onChange={() => handleQuestionChange(question.id, "answer", "false")}
+                              name={`correct-${question.id}`}
+                              checked={question.correctAnswer === "false"}
+                              onChange={() => handleQuestionChange(question.id, "correctAnswer", "false")}
                               className="focus:ring-primary h-4 w-4 text-primary border-gray-300"
                             />
                             <label htmlFor={`false-${question.id}`} className="ml-2 block text-sm text-gray-700">
@@ -478,16 +575,16 @@ function QuizCreation() {
                       </div>
                     )}
 
-                    {question.type === "short_answer" && (
+                    {question.type === "SHORT_ANSWER" && (
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Correct Answer</label>
                         <input
                           type="text"
-                          value={question.answer}
-                          onChange={(e) => handleQuestionChange(question.id, "answer", e.target.value)}
+                          value={question.correctAnswer}
+                          onChange={(e) => handleQuestionChange(question.id, "correctAnswer", e.target.value)}
+                          placeholder="Enter the correct answer"
                           required
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary focus:border-primary"
-                          placeholder="Enter the correct answer"
                         />
                       </div>
                     )}
@@ -506,9 +603,10 @@ function QuizCreation() {
             </button>
             <button
               type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+              disabled={saving}
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
             >
-              Create Quiz
+              {saving ? 'Creating Quiz...' : 'Create Quiz'}
             </button>
           </div>
         </form>
