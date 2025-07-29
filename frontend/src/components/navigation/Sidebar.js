@@ -67,7 +67,7 @@ function Sidebar() {
       return [
         { name: "Dashboard", path: "/student", icon: "dashboard" },
         { name: "Courses", path: "/student/courses", icon: "book" },
-        { name: "Submit Assignment", path: "/student/assignments/submit", icon: "assignment" },
+        { name: "Assignments", path: "/student/assignments", icon: "assignment" },
         { name: "Take Quiz", path: "/student/quizzes/attempt", icon: "quiz" },
         { name: "Plagiarism Check", path: "/student/plagiarism", icon: "security" },
         ...commonItems,

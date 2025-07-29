@@ -140,7 +140,7 @@ function App() {
             <Route path="courses/:courseId" element={<CourseDetailStudent />} />
             <Route path="assignments" element={<AssignmentListStudent />} />
             <Route path="assignments/:id" element={<AssignmentDetailStudent />} />
-            <Route path="assignments/:id/submit" element={<AssignmentSubmitStudent />} />
+            <Route path="assignments/:assignmentId/submit" element={<AssignmentSubmitStudent />} />
             <Route path="quizzes/attempt" element={<QuizAttempt />} />
             <Route path="quizzes/:id/view" element={<QuizAttempt />} />
             <Route path="profile" element={<Profile />} />

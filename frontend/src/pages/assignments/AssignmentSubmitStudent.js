@@ -36,6 +36,12 @@ function AssignmentSubmitStudent() {
     const [showResubmitModal, setShowResubmitModal] = useState(false);
 
     useEffect(() => {
+        // Validate that id is a valid number
+        if (!id || isNaN(parseInt(id))) {
+            setError("Invalid assignment ID");
+            setLoading(false);
+            return;
+        }
         fetchAssignmentData();
     }, [id, currentUser?.id]);
 

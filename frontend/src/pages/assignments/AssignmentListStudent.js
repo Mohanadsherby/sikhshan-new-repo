@@ -4,9 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
-    getActiveAssignmentsByCourse,
-    getOverdueAssignmentsByCourse,
-    getStudentSubmissionsByCourse 
+    getAssignmentsByCourse
 } from '../../api/assignmentApi';
 import { getCoursesByStudent } from '../../api/courseApi';
 
@@ -29,13 +27,17 @@ const getStatusBadge = (assignment, submission) => {
     const dueDate = new Date(assignment.dueDate);
     const isOverdue = dueDate < now;
     
+    // Debug logging
+    console.log(`Assignment: ${assignment.name}`);
+    console.log(`Due date: ${dueDate.toLocaleString()}`);
+    console.log(`Current time: ${now.toLocaleString()}`);
+    console.log(`Is overdue: ${isOverdue}`);
+    
     if (submission) {
-        if (submission.status === 'GRADED') {
+        if (submission.grade) {
             return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Graded</span>;
-        } else if (submission.status === 'LATE_GRADED') {
-            return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Late - Graded</span>;
-        } else if (submission.status === 'LATE_SUBMITTED') {
-            return <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">Late Submitted</span>;
+        } else if (submission.isLate) {
+            return <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">Late Submitted</span>;
         } else {
             return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Submitted</span>;
         }
@@ -65,32 +67,35 @@ function AssignmentListStudent() {
         
         setLoading(true);
         try {
+            console.log("Fetching data for student:", currentUser.id);
+            
             // Fetch enrolled courses
             const coursesRes = await getCoursesByStudent(currentUser.id);
             const courses = coursesRes.data;
+            console.log("Enrolled courses:", courses);
             setEnrolledCourses(courses);
 
             // Fetch assignments for all enrolled courses
             const allAssignments = [];
-            const allSubmissions = [];
             
             for (const course of courses) {
                 try {
-                    const [activeAssignments, overdueAssignments, courseSubmissions] = await Promise.all([
-                        getActiveAssignmentsByCourse(course.id),
-                        getOverdueAssignmentsByCourse(course.id),
-                        getStudentSubmissionsByCourse(currentUser.id, course.id)
-                    ]);
+                    console.log(`Fetching assignments for course: ${course.id} - ${course.name}`);
                     
-                    allAssignments.push(...activeAssignments.data, ...overdueAssignments.data);
-                    allSubmissions.push(...courseSubmissions.data);
+                    const courseAssignments = await getAssignmentsByCourse(course.id);
+                    console.log(`Course ${course.id} assignments:`, courseAssignments.data);
+                    
+                    allAssignments.push(...courseAssignments.data);
                 } catch (err) {
-                    console.error(`Error fetching data for course ${course.id}:`, err);
+                    console.error(`Error fetching assignments for course ${course.id}:`, err);
                 }
             }
             
+            console.log("All assignments:", allAssignments);
+            
             setAssignments(allAssignments);
-            setSubmissions(allSubmissions);
+            // For now, set empty submissions array - we'll handle this later
+            setSubmissions([]);
         } catch (err) {
             setError("Failed to load assignments.");
             console.error("Error fetching data:", err);
@@ -100,7 +105,7 @@ function AssignmentListStudent() {
     };
 
     const getSubmissionForAssignment = (assignmentId) => {
-        return submissions.find(s => s.assignmentId === assignmentId);
+        return submissions.find(submission => submission.assignmentId === assignmentId);
     };
 
     const handleViewAssignment = (assignmentId) => {
@@ -133,18 +138,22 @@ function AssignmentListStudent() {
             case 'submitted':
                 return assignments.filter(assignment => {
                     const submission = getSubmissionForAssignment(assignment.id);
-                    return submission && !submission.status?.includes('GRADED');
+                    return submission && !submission.grade;
                 });
             case 'graded':
                 return assignments.filter(assignment => {
                     const submission = getSubmissionForAssignment(assignment.id);
-                    return submission && submission.status?.includes('GRADED');
+                    return submission && submission.grade;
                 });
             case 'overdue':
                 return assignments.filter(assignment => {
-                    const dueDate = new Date(assignment.dueDate);
                     const now = new Date();
-                    return dueDate < now;
+                    const dueDate = new Date(assignment.dueDate);
+                    const isOverdue = dueDate < now;
+                    const submission = getSubmissionForAssignment(assignment.id);
+                    
+                    // Assignment is overdue if due date has passed and no submission exists
+                    return isOverdue && !submission;
                 });
             default:
                 return assignments;
@@ -209,7 +218,7 @@ function AssignmentListStudent() {
                         >
                             Submitted ({assignments.filter(a => {
                                 const s = getSubmissionForAssignment(a.id);
-                                return s && !s.status?.includes('GRADED');
+                                return s && !s.grade;
                             }).length})
                         </button>
                         <button
@@ -222,7 +231,7 @@ function AssignmentListStudent() {
                         >
                             Graded ({assignments.filter(a => {
                                 const s = getSubmissionForAssignment(a.id);
-                                return s && s.status?.includes('GRADED');
+                                return s && s.grade;
                             }).length})
                         </button>
                         <button
@@ -330,7 +339,7 @@ function AssignmentListStudent() {
                                                 Submit Assignment
                                             </button>
                                         )}
-                                        {submission && !submission.status?.includes('GRADED') && (
+                                        {submission && !submission.grade && (
                                             <button
                                                 onClick={() => handleSubmitAssignment(assignment.id)}
                                                 className="px-3 py-1 text-sm bg-yellow-600 text-white rounded hover:bg-yellow-700"

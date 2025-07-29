@@ -53,6 +53,13 @@ function AssignmentDetailStudent() {
     const [error, setError] = useState("");
 
     useEffect(() => {
+        // Validate that id is a valid number
+        if (!id || isNaN(parseInt(id))) {
+            setError("Invalid assignment ID");
+            setLoading(false);
+            navigate('/student/assignments'); // Redirect to assignment list
+            return;
+        }
         fetchAssignmentData();
     }, [id, currentUser?.id]);
 
