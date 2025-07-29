@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/assignment-submissions")
@@ -41,7 +42,10 @@ public class AssignmentSubmissionController {
         resp.setCloudinaryUrl(submission.getCloudinaryUrl());
         resp.setOriginalFileName(submission.getOriginalFileName());
         resp.setGrade(submission.getGrade());
+        resp.setPointsEarned(submission.getPointsEarned());
         resp.setLetterGrade(submission.getLetterGrade());
+        resp.setGradePoint(submission.getGradePoint());
+        resp.setPerformanceDescription(submission.getPerformanceDescription());
         resp.setFeedback(submission.getFeedback());
         resp.setGradedAt(submission.getGradedAt());
         resp.setSubmissionNumber(submission.getSubmissionNumber());
@@ -149,20 +153,51 @@ public class AssignmentSubmissionController {
             
             AssignmentSubmission submission = submissionOpt.get();
             
-            Double grade = null;
-            if (gradeRequest.get("grade") != null) {
-                if (gradeRequest.get("grade") instanceof Number) {
-                    grade = ((Number) gradeRequest.get("grade")).doubleValue();
+            // Get points earned from request
+            Integer pointsEarned = null;
+            if (gradeRequest.get("pointsEarned") != null) {
+                if (gradeRequest.get("pointsEarned") instanceof Number) {
+                    pointsEarned = ((Number) gradeRequest.get("pointsEarned")).intValue();
                 } else {
-                    grade = Double.parseDouble(gradeRequest.get("grade").toString());
+                    pointsEarned = Integer.parseInt(gradeRequest.get("pointsEarned").toString());
                 }
             }
             
-            String letterGrade = (String) gradeRequest.get("letterGrade");
+            // Validate points earned
+            if (pointsEarned == null || pointsEarned < 0) {
+                return ResponseEntity.badRequest().body("Points earned must be a non-negative number");
+            }
+            
+            // Get assignment to check total points
+            Assignment assignment = submission.getAssignment();
+            if (assignment == null) {
+                return ResponseEntity.badRequest().body("Assignment not found");
+            }
+            
+            Integer totalPoints = assignment.getTotalPoints();
+            if (totalPoints == null || totalPoints <= 0) {
+                return ResponseEntity.badRequest().body("Assignment total points not set");
+            }
+            
+            // Validate points earned doesn't exceed total points
+            if (pointsEarned > totalPoints) {
+                return ResponseEntity.badRequest().body("Points earned cannot exceed total points (" + totalPoints + ")");
+            }
+            
+            // Calculate percentage and letter grade
+            double percentage = com.sikhshan.utility.GradeCalculator.calculatePercentage(pointsEarned, totalPoints);
+            String letterGrade = com.sikhshan.utility.GradeCalculator.calculateLetterGrade(percentage);
+            double gradePoint = com.sikhshan.utility.GradeCalculator.calculateGradePoint(percentage);
+            String performanceDescription = com.sikhshan.utility.GradeCalculator.getPerformanceDescription(percentage);
+            
             String feedback = (String) gradeRequest.get("feedback");
             
-            submission.setGrade(grade);
+            // Set all grading fields
+            submission.setPointsEarned(pointsEarned);
+            submission.setGrade(percentage);
             submission.setLetterGrade(letterGrade);
+            submission.setGradePoint(gradePoint);
+            submission.setPerformanceDescription(performanceDescription);
             submission.setFeedback(feedback);
             submission.setGradedAt(LocalDateTime.now());
             
@@ -269,6 +304,37 @@ public class AssignmentSubmissionController {
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error deleting submission: " + e.getMessage());
+        }
+    }
+
+    // Debug endpoint to test grading
+    @GetMapping("/debug/test-grading/{submissionId}")
+    public ResponseEntity<Map<String, Object>> testGrading(@PathVariable Long submissionId) {
+        try {
+            Optional<AssignmentSubmission> submissionOpt = submissionRepository.findById(submissionId);
+            if (submissionOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            AssignmentSubmission submission = submissionOpt.get();
+            Map<String, Object> result = new HashMap<>();
+            result.put("submissionId", submissionId);
+            result.put("pointsEarned", submission.getPointsEarned());
+            result.put("grade", submission.getGrade());
+            result.put("letterGrade", submission.getLetterGrade());
+            result.put("gradePoint", submission.getGradePoint());
+            result.put("performanceDescription", submission.getPerformanceDescription());
+            result.put("status", submission.getStatus());
+            
+            if (submission.getAssignment() != null) {
+                result.put("assignmentTotalPoints", submission.getAssignment().getTotalPoints());
+            }
+            
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         }
     }
 } 

@@ -19,6 +19,7 @@ public class AssignmentResponse {
     private boolean isOverdue;
     private int submissionCount;
     private int gradedCount;
+    private Integer totalPoints;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -67,4 +68,7 @@ public class AssignmentResponse {
 
     public int getGradedCount() { return gradedCount; }
     public void setGradedCount(int gradedCount) { this.gradedCount = gradedCount; }
+
+    public Integer getTotalPoints() { return totalPoints; }
+    public void setTotalPoints(Integer totalPoints) { this.totalPoints = totalPoints; }
 } 

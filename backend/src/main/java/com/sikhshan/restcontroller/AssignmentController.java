@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import java.util.HashMap;
+import java.util.ArrayList;
 
 @RestController
 @RequestMapping("/api/assignments")
@@ -45,6 +46,7 @@ public class AssignmentController {
         resp.setStatus(assignment.getStatus());
         resp.setCloudinaryUrl(assignment.getCloudinaryUrl());
         resp.setOriginalFileName(assignment.getOriginalFileName());
+        resp.setTotalPoints(assignment.getTotalPoints());
         
         if (assignment.getCourse() != null) {
             resp.setCourseId(assignment.getCourse().getId());
@@ -86,6 +88,7 @@ public class AssignmentController {
             assignment.setDescription(request.getDescription());
             assignment.setDueDate(request.getDueDate());
             assignment.setStatus(request.getStatus() != null ? request.getStatus() : "ACTIVE");
+            assignment.setTotalPoints(request.getTotalPoints() != null ? request.getTotalPoints() : 100);
             assignment.setCourse(courseOpt.get());
             assignment.setInstructor(courseOpt.get().getInstructor());
             
@@ -205,11 +208,56 @@ public class AssignmentController {
             }
             
             Assignment assignment = assignmentOpt.get();
+            Integer oldTotalPoints = assignment.getTotalPoints();
+            Integer newTotalPoints = request.getTotalPoints() != null ? request.getTotalPoints() : assignment.getTotalPoints();
+            
+            // Validate new total points
+            if (newTotalPoints == null || newTotalPoints <= 0) {
+                return ResponseEntity.badRequest().body("Total points must be greater than 0");
+            }
+            
+            // Update assignment fields
             assignment.setName(request.getName());
             assignment.setDescription(request.getDescription());
             assignment.setDueDate(request.getDueDate());
-            if (request.getStatus() != null) {
-                assignment.setStatus(request.getStatus());
+            assignment.setStatus(request.getStatus() != null ? request.getStatus() : assignment.getStatus());
+            assignment.setTotalPoints(newTotalPoints);
+            
+            // If total points changed, proportionally adjust existing grades
+            if (oldTotalPoints != null && !oldTotalPoints.equals(newTotalPoints) && oldTotalPoints > 0) {
+                List<AssignmentSubmission> submissions = submissionRepository.findByAssignmentId(id);
+                int adjustedCount = 0;
+                
+                for (AssignmentSubmission submission : submissions) {
+                    if (submission.getPointsEarned() != null && submission.getGrade() != null) {
+                        // Calculate new points earned proportionally
+                        double ratio = (double) newTotalPoints / oldTotalPoints;
+                        int newPointsEarned = (int) Math.round(submission.getPointsEarned() * ratio);
+                        
+                        // Ensure points earned doesn't exceed new total and is not negative
+                        newPointsEarned = Math.max(0, Math.min(newPointsEarned, newTotalPoints));
+                        
+                        // Recalculate grade, letter grade, grade point, and performance
+                        double newPercentage = com.sikhshan.utility.GradeCalculator.calculatePercentage(newPointsEarned, newTotalPoints);
+                        String newLetterGrade = com.sikhshan.utility.GradeCalculator.calculateLetterGrade(newPercentage);
+                        double newGradePoint = com.sikhshan.utility.GradeCalculator.calculateGradePoint(newPercentage);
+                        String newPerformanceDescription = com.sikhshan.utility.GradeCalculator.getPerformanceDescription(newPercentage);
+                        
+                        // Update submission
+                        submission.setPointsEarned(newPointsEarned);
+                        submission.setGrade(newPercentage);
+                        submission.setLetterGrade(newLetterGrade);
+                        submission.setGradePoint(newGradePoint);
+                        submission.setPerformanceDescription(newPerformanceDescription);
+                        submission.setLastModifiedAt(LocalDateTime.now());
+                        
+                        submissionRepository.save(submission);
+                        adjustedCount++;
+                    }
+                }
+                
+                System.out.println("Proportionally adjusted " + adjustedCount + " submissions for assignment " + id + 
+                                 " (old total: " + oldTotalPoints + ", new total: " + newTotalPoints + ")");
             }
             
             Assignment savedAssignment = assignmentRepository.save(assignment);
@@ -347,6 +395,45 @@ public class AssignmentController {
             response.put("error", e.getMessage());
             response.put("status", "Repository error");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    // Debug endpoint to test proportional adjustment
+    @GetMapping("/debug/proportional-test/{assignmentId}")
+    public ResponseEntity<Map<String, Object>> testProportionalAdjustment(@PathVariable Long assignmentId) {
+        try {
+            Optional<Assignment> assignmentOpt = assignmentRepository.findById(assignmentId);
+            if (assignmentOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Assignment assignment = assignmentOpt.get();
+            List<AssignmentSubmission> submissions = submissionRepository.findByAssignmentId(assignmentId);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("assignmentId", assignmentId);
+            result.put("currentTotalPoints", assignment.getTotalPoints());
+            result.put("submissionCount", submissions.size());
+            
+            List<Map<String, Object>> submissionDetails = new ArrayList<>();
+            for (AssignmentSubmission submission : submissions) {
+                Map<String, Object> sub = new HashMap<>();
+                sub.put("submissionId", submission.getId());
+                sub.put("studentName", submission.getStudent() != null ? submission.getStudent().getName() : "Unknown");
+                sub.put("pointsEarned", submission.getPointsEarned());
+                sub.put("grade", submission.getGrade());
+                sub.put("letterGrade", submission.getLetterGrade());
+                sub.put("performanceDescription", submission.getPerformanceDescription());
+                sub.put("gradePoint", submission.getGradePoint());
+                submissionDetails.add(sub);
+            }
+            result.put("submissions", submissionDetails);
+            
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
         }
     }
 } 

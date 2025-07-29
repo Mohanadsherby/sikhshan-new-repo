@@ -14,8 +14,11 @@ public class AssignmentSubmissionResponse {
     private String status;
     private String cloudinaryUrl;
     private String originalFileName;
-    private Double grade;
-    private String letterGrade;
+    private Double grade; // Numeric grade (0-100) - calculated from pointsEarned/totalPoints
+    private Integer pointsEarned; // Actual points given by teacher (0 to totalPoints)
+    private String letterGrade; // A, B, C, D, F, etc.
+    private Double gradePoint; // Grade point (1.6 - 4.0)
+    private String performanceDescription; // Outstanding, Excellent, etc.
     private String feedback;
     private LocalDateTime gradedAt;
     private Integer submissionNumber;
@@ -59,8 +62,17 @@ public class AssignmentSubmissionResponse {
     public Double getGrade() { return grade; }
     public void setGrade(Double grade) { this.grade = grade; }
 
+    public Integer getPointsEarned() { return pointsEarned; }
+    public void setPointsEarned(Integer pointsEarned) { this.pointsEarned = pointsEarned; }
+
     public String getLetterGrade() { return letterGrade; }
     public void setLetterGrade(String letterGrade) { this.letterGrade = letterGrade; }
+
+    public Double getGradePoint() { return gradePoint; }
+    public void setGradePoint(Double gradePoint) { this.gradePoint = gradePoint; }
+
+    public String getPerformanceDescription() { return performanceDescription; }
+    public void setPerformanceDescription(String performanceDescription) { this.performanceDescription = performanceDescription; }
 
     public String getFeedback() { return feedback; }
     public void setFeedback(String feedback) { this.feedback = feedback; }
