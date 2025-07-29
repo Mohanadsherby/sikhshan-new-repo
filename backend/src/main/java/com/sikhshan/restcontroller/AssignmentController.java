@@ -8,7 +8,6 @@ import com.sikhshan.model.Course;
 import com.sikhshan.model.User;
 import com.sikhshan.repository.AssignmentRepository;
 import com.sikhshan.repository.CourseRepository;
-import com.sikhshan.repository.UserRepository;
 import com.sikhshan.repository.AssignmentSubmissionRepository;
 import com.sikhshan.service.CloudinaryService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +20,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/assignments")
@@ -29,8 +30,6 @@ public class AssignmentController {
     private AssignmentRepository assignmentRepository;
     @Autowired
     private CourseRepository courseRepository;
-    @Autowired
-    private UserRepository userRepository;
     @Autowired
     private AssignmentSubmissionRepository submissionRepository;
     @Autowired
@@ -151,12 +150,25 @@ public class AssignmentController {
         }
     }
 
-    // List assignments for a course
+    // Get assignments by course ID
     @GetMapping("/course/{courseId}")
     public ResponseEntity<List<AssignmentResponse>> getAssignmentsByCourse(@PathVariable Long courseId) {
-        List<Assignment> assignments = assignmentRepository.findByCourseId(courseId);
-        List<AssignmentResponse> responses = assignments.stream().map(this::toResponse).collect(Collectors.toList());
-        return ResponseEntity.ok(responses);
+        try {
+            System.out.println("Fetching assignments for course ID: " + courseId);
+            List<Assignment> assignments = assignmentRepository.findByCourseId(courseId);
+            System.out.println("Found " + assignments.size() + " assignments for course " + courseId);
+            
+            List<AssignmentResponse> responses = assignments.stream()
+                    .map(this::toResponse)
+                    .collect(Collectors.toList());
+            
+            System.out.println("Converted to " + responses.size() + " responses");
+            return ResponseEntity.ok(responses);
+        } catch (Exception e) {
+            System.err.println("Error fetching assignments for course " + courseId + ": " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
     }
 
     // List active assignments for a course
@@ -246,6 +258,95 @@ public class AssignmentController {
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Error deleting assignment: " + e.getMessage());
+        }
+    }
+
+    // Debug endpoint to test assignment fetching
+    @GetMapping("/debug/course/{courseId}")
+    public ResponseEntity<Map<String, Object>> debugAssignmentsByCourse(@PathVariable Long courseId) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            System.out.println("Debug: Fetching assignments for course ID: " + courseId);
+            
+            // Test if course exists
+            Optional<Course> course = courseRepository.findById(courseId);
+            if (!course.isPresent()) {
+                response.put("error", "Course not found");
+                return ResponseEntity.badRequest().body(response);
+            }
+            response.put("course", course.get().getName());
+            
+            // Test assignment fetching
+            List<Assignment> assignments = assignmentRepository.findByCourseId(courseId);
+            response.put("assignmentCount", assignments.size());
+            response.put("assignments", assignments.stream()
+                    .map(a -> {
+                        Map<String, Object> assignmentMap = new HashMap<>();
+                        assignmentMap.put("id", a.getId());
+                        assignmentMap.put("name", a.getName());
+                        assignmentMap.put("status", a.getStatus());
+                        return assignmentMap;
+                    })
+                    .collect(Collectors.toList()));
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("error", e.getMessage());
+            response.put("stackTrace", e.getStackTrace());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    // Simple test endpoint to check assignments
+    @GetMapping("/test")
+    public ResponseEntity<Map<String, Object>> testAssignments() {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            // Get all assignments
+            List<Assignment> allAssignments = assignmentRepository.findAll();
+            response.put("totalAssignments", allAssignments.size());
+            
+            // Get assignments by course
+            List<Assignment> courseAssignments = assignmentRepository.findByCourseId(2L);
+            response.put("course2Assignments", courseAssignments.size());
+            
+            // Check if any assignments exist
+            if (!allAssignments.isEmpty()) {
+                Assignment first = allAssignments.get(0);
+                Map<String, Object> sampleAssignment = new HashMap<>();
+                sampleAssignment.put("id", first.getId());
+                sampleAssignment.put("name", first.getName());
+                sampleAssignment.put("courseId", first.getCourse() != null ? first.getCourse().getId() : "null");
+                response.put("sampleAssignment", sampleAssignment);
+            }
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    // Very simple test endpoint
+    @GetMapping("/ping")
+    public ResponseEntity<String> ping() {
+        return ResponseEntity.ok("Assignment controller is working!");
+    }
+
+    // Test repository access
+    @GetMapping("/repo-test")
+    public ResponseEntity<Map<String, Object>> testRepository() {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            // Just try to count assignments
+            long count = assignmentRepository.count();
+            response.put("totalAssignments", count);
+            response.put("status", "Repository is working");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("error", e.getMessage());
+            response.put("status", "Repository error");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 } 
