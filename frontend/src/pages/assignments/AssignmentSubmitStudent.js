@@ -172,7 +172,7 @@ function AssignmentSubmitStudent() {
     };
 
     const handleCancel = () => {
-        navigate('/student/assignments');
+        navigate('/student/assignments', { state: { refresh: true } });
     };
 
     const handleDownloadAssignmentFile = () => {

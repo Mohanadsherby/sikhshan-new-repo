@@ -1,10 +1,11 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
-    getAssignmentsByCourse
+    getAssignmentsByCourse,
+    getLatestSubmission
 } from '../../api/assignmentApi';
 import { getCoursesByStudent } from '../../api/courseApi';
 
@@ -51,6 +52,7 @@ const getStatusBadge = (assignment, submission) => {
 function AssignmentListStudent() {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [enrolledCourses, setEnrolledCourses] = useState([]);
     const [assignments, setAssignments] = useState([]);
     const [submissions, setSubmissions] = useState([]);
@@ -61,6 +63,21 @@ function AssignmentListStudent() {
     useEffect(() => {
         fetchData();
     }, [currentUser?.id]);
+
+    // Refresh data when returning from submission
+    useEffect(() => {
+        if (location.state?.refresh) {
+            fetchData();
+            // Clear the refresh state
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state]);
+
+    useEffect(() => {
+        if (location.pathname.includes('/student/assignments/')) {
+            fetchData();
+        }
+    }, [location.pathname]);
 
     const fetchData = async () => {
         if (!currentUser?.id) return;
@@ -77,6 +94,7 @@ function AssignmentListStudent() {
 
             // Fetch assignments for all enrolled courses
             const allAssignments = [];
+            const allSubmissions = [];
             
             for (const course of courses) {
                 try {
@@ -86,16 +104,29 @@ function AssignmentListStudent() {
                     console.log(`Course ${course.id} assignments:`, courseAssignments.data);
                     
                     allAssignments.push(...courseAssignments.data);
+                    
+                    // Fetch submissions for each assignment
+                    for (const assignment of courseAssignments.data) {
+                        try {
+                            const submissionRes = await getLatestSubmission(assignment.id, currentUser.id);
+                            if (submissionRes.status === 200) {
+                                allSubmissions.push(submissionRes.data);
+                            }
+                        } catch (err) {
+                            // No submission exists for this assignment, which is fine
+                            console.log(`No submission for assignment ${assignment.id}`);
+                        }
+                    }
                 } catch (err) {
                     console.error(`Error fetching assignments for course ${course.id}:`, err);
                 }
             }
             
             console.log("All assignments:", allAssignments);
+            console.log("All submissions:", allSubmissions);
             
             setAssignments(allAssignments);
-            // For now, set empty submissions array - we'll handle this later
-            setSubmissions([]);
+            setSubmissions(allSubmissions);
         } catch (err) {
             setError("Failed to load assignments.");
             console.error("Error fetching data:", err);
@@ -105,7 +136,7 @@ function AssignmentListStudent() {
     };
 
     const getSubmissionForAssignment = (assignmentId) => {
-        return submissions.find(submission => submission.assignmentId === assignmentId);
+        return submissions.find(submission => submission.assignmentId === assignmentId || submission.assignment?.id === assignmentId);
     };
 
     const handleViewAssignment = (assignmentId) => {
@@ -133,17 +164,17 @@ function AssignmentListStudent() {
             case 'pending':
                 return assignments.filter(assignment => {
                     const submission = getSubmissionForAssignment(assignment.id);
-                    return !submission;
+                    return !submission; // No submission exists
                 });
             case 'submitted':
                 return assignments.filter(assignment => {
                     const submission = getSubmissionForAssignment(assignment.id);
-                    return submission && !submission.grade;
+                    return submission; // Any submission exists (including graded)
                 });
             case 'graded':
                 return assignments.filter(assignment => {
                     const submission = getSubmissionForAssignment(assignment.id);
-                    return submission && submission.grade;
+                    return submission && submission.grade; // Has submission and is graded
                 });
             case 'overdue':
                 return assignments.filter(assignment => {
@@ -174,8 +205,19 @@ function AssignmentListStudent() {
         <div className="container mx-auto px-4 py-6">
             {/* Header */}
             <div className="mb-6">
-                <h1 className="text-3xl font-bold text-gray-800">My Assignments</h1>
-                <p className="text-gray-600 mt-2">View and submit assignments for your enrolled courses</p>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-800">My Assignments</h1>
+                        <p className="text-gray-600 mt-2">View and submit assignments for your enrolled courses</p>
+                    </div>
+                    <button
+                        onClick={fetchData}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center gap-2"
+                    >
+                        <span>🔄</span>
+                        Refresh
+                    </button>
+                </div>
             </div>
 
             {error && (
@@ -216,10 +258,7 @@ function AssignmentListStudent() {
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             }`}
                         >
-                            Submitted ({assignments.filter(a => {
-                                const s = getSubmissionForAssignment(a.id);
-                                return s && !s.grade;
-                            }).length})
+                            Submitted ({assignments.filter(a => getSubmissionForAssignment(a.id)).length})
                         </button>
                         <button
                             onClick={() => setActiveTab('graded')}
@@ -230,8 +269,8 @@ function AssignmentListStudent() {
                             }`}
                         >
                             Graded ({assignments.filter(a => {
-                                const s = getSubmissionForAssignment(a.id);
-                                return s && s.grade;
+                                const submission = getSubmissionForAssignment(a.id);
+                                return submission && submission.grade;
                             }).length})
                         </button>
                         <button
@@ -242,7 +281,13 @@ function AssignmentListStudent() {
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             }`}
                         >
-                            Overdue ({assignments.filter(a => new Date(a.dueDate) < new Date()).length})
+                            Overdue ({assignments.filter(a => {
+                                const now = new Date();
+                                const dueDate = new Date(a.dueDate);
+                                const isOverdue = dueDate < now;
+                                const submission = getSubmissionForAssignment(a.id);
+                                return isOverdue && !submission;
+                            }).length})
                         </button>
                     </nav>
                 </div>
