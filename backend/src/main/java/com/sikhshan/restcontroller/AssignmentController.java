@@ -3,19 +3,26 @@ package com.sikhshan.restcontroller;
 import com.sikhshan.dto.AssignmentRequest;
 import com.sikhshan.dto.AssignmentResponse;
 import com.sikhshan.model.Assignment;
+import com.sikhshan.model.AssignmentSubmission;
 import com.sikhshan.model.Course;
 import com.sikhshan.model.User;
 import com.sikhshan.repository.AssignmentRepository;
 import com.sikhshan.repository.CourseRepository;
-import com.sikhshan.repository.UserRepository;
+import com.sikhshan.repository.AssignmentSubmissionRepository;
+import com.sikhshan.service.CloudinaryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.Map;
+import org.springframework.http.HttpStatus;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 @RestController
 @RequestMapping("/api/assignments")
@@ -25,7 +32,9 @@ public class AssignmentController {
     @Autowired
     private CourseRepository courseRepository;
     @Autowired
-    private UserRepository userRepository;
+    private AssignmentSubmissionRepository submissionRepository;
+    @Autowired
+    private CloudinaryService cloudinaryService;
 
     private AssignmentResponse toResponse(Assignment assignment) {
         AssignmentResponse resp = new AssignmentResponse();
@@ -34,34 +43,95 @@ public class AssignmentController {
         resp.setDescription(assignment.getDescription());
         resp.setDueDate(assignment.getDueDate());
         resp.setCreatedAt(assignment.getCreatedAt());
+        resp.setStatus(assignment.getStatus());
+        resp.setCloudinaryUrl(assignment.getCloudinaryUrl());
+        resp.setOriginalFileName(assignment.getOriginalFileName());
+        resp.setTotalPoints(assignment.getTotalPoints());
+        
         if (assignment.getCourse() != null) {
             resp.setCourseId(assignment.getCourse().getId());
             resp.setCourseName(assignment.getCourse().getName());
         }
+        
         if (assignment.getInstructor() != null) {
             resp.setInstructorId(assignment.getInstructor().getId());
             resp.setInstructorName(assignment.getInstructor().getName());
+            resp.setInstructorProfilePictureUrl(assignment.getInstructor().getCloudinaryUrl());
         }
+        
+        // Check if assignment is overdue
+        resp.setOverdue(assignment.getDueDate() != null && assignment.getDueDate().isBefore(LocalDateTime.now()));
+        
+        // Get submission counts
+        List<AssignmentSubmission> submissions = submissionRepository.findByAssignmentId(assignment.getId());
+        resp.setSubmissionCount(submissions.size());
+        
+        long gradedCount = submissions.stream()
+            .filter(s -> s.getStatus() != null && s.getStatus().contains("GRADED"))
+            .count();
+        resp.setGradedCount((int) gradedCount);
+        
         return resp;
     }
 
     // Create assignment
     @PostMapping
     public ResponseEntity<?> createAssignment(@RequestBody AssignmentRequest request) {
-        Optional<Course> courseOpt = courseRepository.findById(request.getCourseId());
-        Optional<User> instructorOpt = userRepository.findById(request.getInstructorId());
-        if (courseOpt.isEmpty() || instructorOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("Invalid course or instructor ID");
+        try {
+            Optional<Course> courseOpt = courseRepository.findById(request.getCourseId());
+            if (courseOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body("Invalid course ID");
+            }
+            
+            Assignment assignment = new Assignment();
+            assignment.setName(request.getName());
+            assignment.setDescription(request.getDescription());
+            assignment.setDueDate(request.getDueDate());
+            assignment.setStatus(request.getStatus() != null ? request.getStatus() : "ACTIVE");
+            assignment.setTotalPoints(request.getTotalPoints() != null ? request.getTotalPoints() : 100);
+            assignment.setCourse(courseOpt.get());
+            assignment.setInstructor(courseOpt.get().getInstructor());
+            
+            Assignment savedAssignment = assignmentRepository.save(assignment);
+            return ResponseEntity.ok(toResponse(savedAssignment));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error creating assignment: " + e.getMessage());
         }
-        Assignment assignment = new Assignment();
-        assignment.setName(request.getName());
-        assignment.setDescription(request.getDescription());
-        assignment.setDueDate(request.getDueDate());
-        assignment.setCreatedAt(LocalDate.now());
-        assignment.setCourse(courseOpt.get());
-        assignment.setInstructor(instructorOpt.get());
-        assignmentRepository.save(assignment);
-        return ResponseEntity.ok(toResponse(assignment));
+    }
+
+    // Upload assignment file
+    @PostMapping("/{id}/file")
+    public ResponseEntity<?> uploadAssignmentFile(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
+        try {
+            Optional<Assignment> assignmentOpt = assignmentRepository.findById(id);
+            if (assignmentOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Assignment assignment = assignmentOpt.get();
+            
+            // Delete old file if exists
+            if (assignment.getCloudinaryPublicId() != null) {
+                try {
+                    cloudinaryService.deleteFile(assignment.getCloudinaryPublicId());
+                } catch (Exception e) {
+                    // Log error but continue
+                    System.err.println("Error deleting old file: " + e.getMessage());
+                }
+            }
+            
+            // Upload new file
+            Map<String, Object> uploadResult = cloudinaryService.uploadAssignmentFile(file, id);
+            
+            assignment.setCloudinaryPublicId((String) uploadResult.get("public_id"));
+            assignment.setCloudinaryUrl((String) uploadResult.get("secure_url"));
+            assignment.setOriginalFileName(file.getOriginalFilename());
+            
+            Assignment savedAssignment = assignmentRepository.save(assignment);
+            return ResponseEntity.ok(toResponse(savedAssignment));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error uploading file: " + e.getMessage());
+        }
     }
 
     // List all assignments
@@ -79,14 +149,43 @@ public class AssignmentController {
         if (assignmentOpt.isPresent()) {
             return ResponseEntity.ok(toResponse(assignmentOpt.get()));
         } else {
-            return ResponseEntity.status(404).body("Assignment not found with id: " + id);
+            return ResponseEntity.notFound().build();
         }
     }
 
-    // List assignments for a course
+    // Get assignments by course ID
     @GetMapping("/course/{courseId}")
     public ResponseEntity<List<AssignmentResponse>> getAssignmentsByCourse(@PathVariable Long courseId) {
-        List<Assignment> assignments = assignmentRepository.findByCourseId(courseId);
+        try {
+            System.out.println("Fetching assignments for course ID: " + courseId);
+            List<Assignment> assignments = assignmentRepository.findByCourseId(courseId);
+            System.out.println("Found " + assignments.size() + " assignments for course " + courseId);
+            
+            List<AssignmentResponse> responses = assignments.stream()
+                    .map(this::toResponse)
+                    .collect(Collectors.toList());
+            
+            System.out.println("Converted to " + responses.size() + " responses");
+            return ResponseEntity.ok(responses);
+        } catch (Exception e) {
+            System.err.println("Error fetching assignments for course " + courseId + ": " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    // List active assignments for a course
+    @GetMapping("/course/{courseId}/active")
+    public ResponseEntity<List<AssignmentResponse>> getActiveAssignmentsByCourse(@PathVariable Long courseId) {
+        List<Assignment> assignments = assignmentRepository.findByCourseIdAndStatus(courseId, "ACTIVE");
+        List<AssignmentResponse> responses = assignments.stream().map(this::toResponse).collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
+    // List overdue assignments for a course
+    @GetMapping("/course/{courseId}/overdue")
+    public ResponseEntity<List<AssignmentResponse>> getOverdueAssignmentsByCourse(@PathVariable Long courseId) {
+        List<Assignment> assignments = assignmentRepository.findOverdueAssignmentsByCourse(courseId, LocalDateTime.now());
         List<AssignmentResponse> responses = assignments.stream().map(this::toResponse).collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
@@ -102,32 +201,239 @@ public class AssignmentController {
     // Update assignment
     @PutMapping("/{id}")
     public ResponseEntity<?> updateAssignment(@PathVariable Long id, @RequestBody AssignmentRequest request) {
-        Optional<Assignment> assignmentOpt = assignmentRepository.findById(id);
-        if (assignmentOpt.isEmpty()) {
-            return ResponseEntity.status(404).body("Assignment not found with id: " + id);
+        try {
+            Optional<Assignment> assignmentOpt = assignmentRepository.findById(id);
+            if (assignmentOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Assignment assignment = assignmentOpt.get();
+            Integer oldTotalPoints = assignment.getTotalPoints();
+            Integer newTotalPoints = request.getTotalPoints() != null ? request.getTotalPoints() : assignment.getTotalPoints();
+            
+            // Validate new total points
+            if (newTotalPoints == null || newTotalPoints <= 0) {
+                return ResponseEntity.badRequest().body("Total points must be greater than 0");
+            }
+            
+            // Update assignment fields
+            assignment.setName(request.getName());
+            assignment.setDescription(request.getDescription());
+            assignment.setDueDate(request.getDueDate());
+            assignment.setStatus(request.getStatus() != null ? request.getStatus() : assignment.getStatus());
+            assignment.setTotalPoints(newTotalPoints);
+            
+            // If total points changed, proportionally adjust existing grades
+            if (oldTotalPoints != null && !oldTotalPoints.equals(newTotalPoints) && oldTotalPoints > 0) {
+                List<AssignmentSubmission> submissions = submissionRepository.findByAssignmentId(id);
+                int adjustedCount = 0;
+                
+                for (AssignmentSubmission submission : submissions) {
+                    if (submission.getPointsEarned() != null && submission.getGrade() != null) {
+                        // Calculate new points earned proportionally
+                        double ratio = (double) newTotalPoints / oldTotalPoints;
+                        int newPointsEarned = (int) Math.round(submission.getPointsEarned() * ratio);
+                        
+                        // Ensure points earned doesn't exceed new total and is not negative
+                        newPointsEarned = Math.max(0, Math.min(newPointsEarned, newTotalPoints));
+                        
+                        // Recalculate grade, letter grade, grade point, and performance
+                        double newPercentage = com.sikhshan.utility.GradeCalculator.calculatePercentage(newPointsEarned, newTotalPoints);
+                        String newLetterGrade = com.sikhshan.utility.GradeCalculator.calculateLetterGrade(newPercentage);
+                        double newGradePoint = com.sikhshan.utility.GradeCalculator.calculateGradePoint(newPercentage);
+                        String newPerformanceDescription = com.sikhshan.utility.GradeCalculator.getPerformanceDescription(newPercentage);
+                        
+                        // Update submission
+                        submission.setPointsEarned(newPointsEarned);
+                        submission.setGrade(newPercentage);
+                        submission.setLetterGrade(newLetterGrade);
+                        submission.setGradePoint(newGradePoint);
+                        submission.setPerformanceDescription(newPerformanceDescription);
+                        submission.setLastModifiedAt(LocalDateTime.now());
+                        
+                        submissionRepository.save(submission);
+                        adjustedCount++;
+                    }
+                }
+                
+                System.out.println("Proportionally adjusted " + adjustedCount + " submissions for assignment " + id + 
+                                 " (old total: " + oldTotalPoints + ", new total: " + newTotalPoints + ")");
+            }
+            
+            Assignment savedAssignment = assignmentRepository.save(assignment);
+            return ResponseEntity.ok(toResponse(savedAssignment));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error updating assignment: " + e.getMessage());
         }
-        Optional<Course> courseOpt = courseRepository.findById(request.getCourseId());
-        Optional<User> instructorOpt = userRepository.findById(request.getInstructorId());
-        if (courseOpt.isEmpty() || instructorOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body("Invalid course or instructor ID");
-        }
-        Assignment assignment = assignmentOpt.get();
-        assignment.setName(request.getName());
-        assignment.setDescription(request.getDescription());
-        assignment.setDueDate(request.getDueDate());
-        assignment.setCourse(courseOpt.get());
-        assignment.setInstructor(instructorOpt.get());
-        assignmentRepository.save(assignment);
-        return ResponseEntity.ok(toResponse(assignment));
     }
 
     // Delete assignment
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteAssignment(@PathVariable Long id) {
-        if (!assignmentRepository.existsById(id)) {
-            return ResponseEntity.status(404).body("Assignment not found with id: " + id);
+        try {
+            Optional<Assignment> assignmentOpt = assignmentRepository.findById(id);
+            if (assignmentOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Assignment assignment = assignmentOpt.get();
+            
+            // Delete file from Cloudinary if exists
+            if (assignment.getCloudinaryPublicId() != null) {
+                try {
+                    cloudinaryService.deleteFile(assignment.getCloudinaryPublicId());
+                } catch (Exception e) {
+                    // Log error but continue
+                    System.err.println("Error deleting file from Cloudinary: " + e.getMessage());
+                }
+            }
+            
+            // Delete all submissions for this assignment
+            List<AssignmentSubmission> submissions = submissionRepository.findByAssignmentId(id);
+            for (AssignmentSubmission submission : submissions) {
+                if (submission.getCloudinaryPublicId() != null) {
+                    try {
+                        cloudinaryService.deleteFile(submission.getCloudinaryPublicId());
+                    } catch (Exception e) {
+                        // Log error but continue
+                        System.err.println("Error deleting submission file from Cloudinary: " + e.getMessage());
+                    }
+                }
+                submissionRepository.delete(submission);
+            }
+            
+            assignmentRepository.delete(assignment);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Error deleting assignment: " + e.getMessage());
         }
-        assignmentRepository.deleteById(id);
-        return ResponseEntity.ok("Assignment deleted successfully");
+    }
+
+    // Debug endpoint to test assignment fetching
+    @GetMapping("/debug/course/{courseId}")
+    public ResponseEntity<Map<String, Object>> debugAssignmentsByCourse(@PathVariable Long courseId) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            System.out.println("Debug: Fetching assignments for course ID: " + courseId);
+            
+            // Test if course exists
+            Optional<Course> course = courseRepository.findById(courseId);
+            if (!course.isPresent()) {
+                response.put("error", "Course not found");
+                return ResponseEntity.badRequest().body(response);
+            }
+            response.put("course", course.get().getName());
+            
+            // Test assignment fetching
+            List<Assignment> assignments = assignmentRepository.findByCourseId(courseId);
+            response.put("assignmentCount", assignments.size());
+            response.put("assignments", assignments.stream()
+                    .map(a -> {
+                        Map<String, Object> assignmentMap = new HashMap<>();
+                        assignmentMap.put("id", a.getId());
+                        assignmentMap.put("name", a.getName());
+                        assignmentMap.put("status", a.getStatus());
+                        return assignmentMap;
+                    })
+                    .collect(Collectors.toList()));
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("error", e.getMessage());
+            response.put("stackTrace", e.getStackTrace());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    // Simple test endpoint to check assignments
+    @GetMapping("/test")
+    public ResponseEntity<Map<String, Object>> testAssignments() {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            // Get all assignments
+            List<Assignment> allAssignments = assignmentRepository.findAll();
+            response.put("totalAssignments", allAssignments.size());
+            
+            // Get assignments by course
+            List<Assignment> courseAssignments = assignmentRepository.findByCourseId(2L);
+            response.put("course2Assignments", courseAssignments.size());
+            
+            // Check if any assignments exist
+            if (!allAssignments.isEmpty()) {
+                Assignment first = allAssignments.get(0);
+                Map<String, Object> sampleAssignment = new HashMap<>();
+                sampleAssignment.put("id", first.getId());
+                sampleAssignment.put("name", first.getName());
+                sampleAssignment.put("courseId", first.getCourse() != null ? first.getCourse().getId() : "null");
+                response.put("sampleAssignment", sampleAssignment);
+            }
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    // Very simple test endpoint
+    @GetMapping("/ping")
+    public ResponseEntity<String> ping() {
+        return ResponseEntity.ok("Assignment controller is working!");
+    }
+
+    // Test repository access
+    @GetMapping("/repo-test")
+    public ResponseEntity<Map<String, Object>> testRepository() {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            // Just try to count assignments
+            long count = assignmentRepository.count();
+            response.put("totalAssignments", count);
+            response.put("status", "Repository is working");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("error", e.getMessage());
+            response.put("status", "Repository error");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    // Debug endpoint to test proportional adjustment
+    @GetMapping("/debug/proportional-test/{assignmentId}")
+    public ResponseEntity<Map<String, Object>> testProportionalAdjustment(@PathVariable Long assignmentId) {
+        try {
+            Optional<Assignment> assignmentOpt = assignmentRepository.findById(assignmentId);
+            if (assignmentOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Assignment assignment = assignmentOpt.get();
+            List<AssignmentSubmission> submissions = submissionRepository.findByAssignmentId(assignmentId);
+            
+            Map<String, Object> result = new HashMap<>();
+            result.put("assignmentId", assignmentId);
+            result.put("currentTotalPoints", assignment.getTotalPoints());
+            result.put("submissionCount", submissions.size());
+            
+            List<Map<String, Object>> submissionDetails = new ArrayList<>();
+            for (AssignmentSubmission submission : submissions) {
+                Map<String, Object> sub = new HashMap<>();
+                sub.put("submissionId", submission.getId());
+                sub.put("studentName", submission.getStudent() != null ? submission.getStudent().getName() : "Unknown");
+                sub.put("pointsEarned", submission.getPointsEarned());
+                sub.put("grade", submission.getGrade());
+                sub.put("letterGrade", submission.getLetterGrade());
+                sub.put("performanceDescription", submission.getPerformanceDescription());
+                sub.put("gradePoint", submission.getGradePoint());
+                submissionDetails.add(sub);
+            }
+            result.put("submissions", submissionDetails);
+            
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            return ResponseEntity.badRequest().body(error);
+        }
     }
 } 
