@@ -17,6 +17,7 @@ public class AssignmentRequest {
     
     @NotNull(message = "Course ID is required")
     private Long courseId;
+    private Integer totalPoints = 100; // Default to 100 points
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

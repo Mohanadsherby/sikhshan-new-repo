@@ -29,6 +29,9 @@ public class Assignment {
     private String cloudinaryUrl;
     private String originalFileName;
 
+    @Column(name = "total_points", nullable = false)
+    private Integer totalPoints = 100; // Default to 100 points
+
     @ManyToOne
     @JoinColumn(name = "course_id")
     private Course course;
@@ -72,6 +75,9 @@ public class Assignment {
 
     public String getOriginalFileName() { return originalFileName; }
     public void setOriginalFileName(String originalFileName) { this.originalFileName = originalFileName; }
+
+    public Integer getTotalPoints() { return totalPoints; }
+    public void setTotalPoints(Integer totalPoints) { this.totalPoints = totalPoints; }
 
     public Course getCourse() { return course; }
     public void setCourse(Course course) { this.course = course; }
