@@ -11,7 +11,13 @@ public class QuizAttemptResponse {
     private LocalDateTime startedAt;
     private LocalDateTime submittedAt;
     private Double score;
+    private Integer pointsEarned;
+    private Double percentage;
+    private String letterGrade;
     private String answers;
+    private String status;
+    private Integer totalPoints;
+    private String performanceDescription;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -37,6 +43,24 @@ public class QuizAttemptResponse {
     public Double getScore() { return score; }
     public void setScore(Double score) { this.score = score; }
 
+    public Integer getPointsEarned() { return pointsEarned; }
+    public void setPointsEarned(Integer pointsEarned) { this.pointsEarned = pointsEarned; }
+
+    public Double getPercentage() { return percentage; }
+    public void setPercentage(Double percentage) { this.percentage = percentage; }
+
+    public String getLetterGrade() { return letterGrade; }
+    public void setLetterGrade(String letterGrade) { this.letterGrade = letterGrade; }
+
     public String getAnswers() { return answers; }
     public void setAnswers(String answers) { this.answers = answers; }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    public Integer getTotalPoints() { return totalPoints; }
+    public void setTotalPoints(Integer totalPoints) { this.totalPoints = totalPoints; }
+
+    public String getPerformanceDescription() { return performanceDescription; }
+    public void setPerformanceDescription(String performanceDescription) { this.performanceDescription = performanceDescription; }
 } 
