@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
     getAssignmentsByInstructor, 
@@ -36,6 +36,7 @@ const getStatusBadge = (assignment) => {
 function AssignmentListFaculty() {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [assignments, setAssignments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -46,6 +47,15 @@ function AssignmentListFaculty() {
     useEffect(() => {
         fetchAssignments();
     }, [currentUser?.id]);
+
+    // Refresh assignments when navigating back from edit/create
+    useEffect(() => {
+        if (location.state?.refresh) {
+            fetchAssignments();
+            // Clear the refresh flag
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state]);
 
     const fetchAssignments = async () => {
         if (!currentUser?.id) return;
@@ -132,6 +142,12 @@ function AssignmentListFaculty() {
                 </div>
             )}
 
+            {location.state?.success && (
+                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                    {location.state.success}
+                </div>
+            )}
+
             {/* Assignments List */}
             {assignments.length === 0 ? (
                 <div className="text-center py-12">
@@ -162,7 +178,7 @@ function AssignmentListFaculty() {
                                         {assignment.description || 'No description provided'}
                                     </p>
                                     
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                                         <div>
                                             <span className="font-medium text-gray-500">Course:</span>
                                             <span className="ml-2 text-gray-900">{assignment.courseName}</span>
@@ -170,6 +186,10 @@ function AssignmentListFaculty() {
                                         <div>
                                             <span className="font-medium text-gray-500">Due Date:</span>
                                             <span className="ml-2 text-gray-900">{formatDate(assignment.dueDate)}</span>
+                                        </div>
+                                        <div>
+                                            <span className="font-medium text-gray-500">Total Points:</span>
+                                            <span className="ml-2 text-gray-900">{assignment.totalPoints || 100}</span>
                                         </div>
                                         <div>
                                             <span className="font-medium text-gray-500">Submissions:</span>

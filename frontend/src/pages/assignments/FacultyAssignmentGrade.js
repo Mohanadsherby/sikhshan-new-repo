@@ -15,6 +15,28 @@ const formatDate = (dateStr) => {
     });
 };
 
+const calculateLetterGrade = (percentage) => {
+    if (percentage >= 90.0) return "A+";
+    if (percentage >= 80.0) return "A";
+    if (percentage >= 70.0) return "B+";
+    if (percentage >= 60.0) return "B";
+    if (percentage >= 50.0) return "C+";
+    if (percentage >= 40.0) return "C";
+    if (percentage >= 35.0) return "D+";
+    return "F";
+};
+
+const getPerformanceDescription = (percentage) => {
+    if (percentage >= 90.0) return "Outstanding";
+    if (percentage >= 80.0) return "Excellent";
+    if (percentage >= 70.0) return "Very Good";
+    if (percentage >= 60.0) return "Good";
+    if (percentage >= 50.0) return "Satisfactory";
+    if (percentage >= 40.0) return "Acceptable";
+    if (percentage >= 35.0) return "Basic";
+    return "Fail";
+};
+
 export default function FacultyAssignmentGrade() {
     const { assignmentId, submissionId } = useParams();
     const navigate = useNavigate();
@@ -23,7 +45,8 @@ export default function FacultyAssignmentGrade() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [grading, setGrading] = useState(false);
-    const [gradeData, setGradeData] = useState({ grade: '', letterGrade: '', feedback: '' });
+    const [gradeData, setGradeData] = useState({ pointsEarned: '', grade: '', letterGrade: '', feedback: '' });
+    const [isDataLoaded, setIsDataLoaded] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -37,16 +60,21 @@ export default function FacultyAssignmentGrade() {
                 getSubmissionById(submissionId)
             ]);
             
+            console.log('Assignment data:', assignmentRes.data);
+            console.log('Submission data:', submissionRes.data);
+            
             setAssignment(assignmentRes.data);
             setSubmission(submissionRes.data);
             
-            // Pre-populate grade data if submission is already graded
-            if (submissionRes.data.grade) {
+            // Pre-populate grade data if submission is already graded (only once)
+            if (submissionRes.data.pointsEarned && !isDataLoaded) {
                 setGradeData({
-                    grade: submissionRes.data.grade.toString(),
+                    pointsEarned: submissionRes.data.pointsEarned.toString(),
+                    grade: submissionRes.data.grade?.toString() || '',
                     letterGrade: submissionRes.data.letterGrade || '',
                     feedback: submissionRes.data.feedback || ''
                 });
+                setIsDataLoaded(true);
             }
         } catch (err) {
             setError("Failed to load submission details.");
@@ -59,11 +87,26 @@ export default function FacultyAssignmentGrade() {
     const handleGradeSubmit = async () => {
         if (!submission) return;
         
+        // Validate required fields
+        if (!gradeData.pointsEarned || gradeData.pointsEarned.trim() === '') {
+            setError("Points earned is required.");
+            return;
+        }
+        
+        const pointsEarned = parseFloat(gradeData.pointsEarned);
+        const totalPoints = assignment?.totalPoints || 100;
+        
+        if (isNaN(pointsEarned) || pointsEarned < 0 || pointsEarned > totalPoints) {
+            setError(`Points earned must be between 0 and ${totalPoints}.`);
+            return;
+        }
+        
         setGrading(true);
+        setError(""); // Clear any previous errors
+        
         try {
             const gradePayload = {
-                grade: parseFloat(gradeData.grade),
-                letterGrade: gradeData.letterGrade,
+                pointsEarned: parseInt(gradeData.pointsEarned),
                 feedback: gradeData.feedback
             };
             
@@ -72,7 +115,10 @@ export default function FacultyAssignmentGrade() {
             // Update local state
             setSubmission(prev => ({
                 ...prev,
-                ...gradePayload,
+                pointsEarned: parseInt(gradeData.pointsEarned),
+                grade: gradeData.grade,
+                letterGrade: gradeData.letterGrade,
+                feedback: gradeData.feedback,
                 status: prev.isLate ? 'LATE_GRADED' : 'GRADED',
                 gradedAt: new Date().toISOString()
             }));
@@ -167,7 +213,7 @@ export default function FacultyAssignmentGrade() {
                     </div>
                     <div>
                         <p className="text-sm font-medium text-gray-500">Total Points</p>
-                        <p className="text-gray-900">{assignment.totalPoints || 'N/A'}</p>
+                        <p className="text-gray-900">{assignment.totalPoints || 100}</p>
                     </div>
                 </div>
                 {assignment.description && (
@@ -215,11 +261,12 @@ export default function FacultyAssignmentGrade() {
                     </div>
                 )}
 
-                {submission.grade && (
+                {submission.pointsEarned && (
                     <div className="mt-4">
                         <p className="text-sm font-medium text-gray-500">Current Grade</p>
                         <p className="text-gray-900">
-                            {submission.grade}% ({submission.letterGrade})
+                            {submission.pointsEarned} / {assignment.totalPoints || 100} points 
+                            ({submission.grade}% - {submission.letterGrade} - {submission.performanceDescription})
                         </p>
                     </div>
                 )}
@@ -233,48 +280,74 @@ export default function FacultyAssignmentGrade() {
             </div>
 
             {/* Grading Form */}
-            <div className="bg-white rounded-lg shadow-md p-6">
+            <form onSubmit={(e) => { e.preventDefault(); handleGradeSubmit(); }} className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-lg font-semibold mb-4">Grade Submission</h2>
                 
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Grade (%)
+                            Points Earned (out of {assignment.totalPoints || 100}) *
                         </label>
                         <input
                             type="number"
                             min="0"
-                            max="100"
+                            max={assignment.totalPoints || 100}
                             step="0.1"
-                            value={gradeData.grade}
-                            onChange={(e) => setGradeData(prev => ({ ...prev, grade: e.target.value }))}
+                            value={gradeData.pointsEarned || ''}
+                            onChange={(e) => {
+                                        const points = parseFloat(e.target.value) || 0;
+                                        const totalPoints = assignment.totalPoints || 100;
+                                        const percentage = totalPoints > 0 ? Math.round((points / totalPoints) * 100 * 10) / 10 : 0;
+                                        const letterGrade = calculateLetterGrade(percentage);
+                                        const performanceDescription = getPerformanceDescription(percentage);
+                                        setGradeData(prev => ({ 
+                                            ...prev, 
+                                            pointsEarned: e.target.value,
+                                            grade: percentage,
+                                            letterGrade: letterGrade,
+                                            performanceDescription: performanceDescription
+                                        }));
+                                    }}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder={`0 - ${assignment.totalPoints || 100}`}
+                            required
                         />
                     </div>
                     
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Letter Grade
-                        </label>
-                        <select
-                            value={gradeData.letterGrade}
-                            onChange={(e) => setGradeData(prev => ({ ...prev, letterGrade: e.target.value }))}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                        >
-                            <option value="">Select grade</option>
-                            <option value="A+">A+</option>
-                            <option value="A">A</option>
-                            <option value="A-">A-</option>
-                            <option value="B+">B+</option>
-                            <option value="B">B</option>
-                            <option value="B-">B-</option>
-                            <option value="C+">C+</option>
-                            <option value="C">C</option>
-                            <option value="C-">C-</option>
-                            <option value="D+">D+</option>
-                            <option value="D">D</option>
-                            <option value="F">F</option>
-                        </select>
+                    <div className="grid grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Percentage (Auto-calculated)
+                            </label>
+                            <input
+                                type="text"
+                                value={gradeData.grade ? `${gradeData.grade}%` : ''}
+                                readOnly
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Letter Grade (Auto-calculated)
+                            </label>
+                            <input
+                                type="text"
+                                value={gradeData.letterGrade || ''}
+                                readOnly
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Performance (Auto-calculated)
+                            </label>
+                            <input
+                                type="text"
+                                value={gradeData.grade ? getPerformanceDescription(gradeData.grade) : ''}
+                                readOnly
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700"
+                            />
+                        </div>
                     </div>
                     
                     <div>
@@ -293,6 +366,7 @@ export default function FacultyAssignmentGrade() {
                 
                 <div className="flex gap-3 mt-6">
                     <button
+                        type="button"
                         onClick={() => navigate(`/faculty/assignments/${assignmentId}`)}
                         className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
                         disabled={grading}
@@ -300,14 +374,14 @@ export default function FacultyAssignmentGrade() {
                         Cancel
                     </button>
                     <button
-                        onClick={handleGradeSubmit}
+                        type="submit"
                         className="flex-1 px-4 py-2 bg-primary text-white rounded hover:bg-primary-dark disabled:opacity-50"
                         disabled={grading}
                     >
                         {grading ? 'Submitting...' : 'Submit Grade'}
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     );
 } 

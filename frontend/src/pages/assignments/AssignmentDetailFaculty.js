@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
     getAssignmentById, 
@@ -24,6 +24,17 @@ const formatDate = (dateStr) => {
     });
 };
 
+const calculateLetterGrade = (percentage) => {
+    if (percentage >= 90.0) return "A+";
+    if (percentage >= 80.0) return "A";
+    if (percentage >= 70.0) return "B+";
+    if (percentage >= 60.0) return "B";
+    if (percentage >= 50.0) return "C+";
+    if (percentage >= 40.0) return "C";
+    if (percentage >= 35.0) return "D+";
+    return "F";
+};
+
 const getSubmissionStatusBadge = (submission) => {
     if (submission.status === 'GRADED') {
         return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Graded</span>;
@@ -40,6 +51,7 @@ function AssignmentDetailFaculty() {
     const { id } = useParams();
     const { currentUser } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [assignment, setAssignment] = useState(null);
     const [submissions, setSubmissions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -48,11 +60,20 @@ function AssignmentDetailFaculty() {
     const [grading, setGrading] = useState(false);
     const [showGradeModal, setShowGradeModal] = useState(false);
     const [selectedSubmission, setSelectedSubmission] = useState(null);
-    const [gradeData, setGradeData] = useState({ grade: '', letterGrade: '', feedback: '' });
+    const [gradeData, setGradeData] = useState({ pointsEarned: '', grade: '', letterGrade: '', feedback: '' });
 
     useEffect(() => {
         fetchAssignmentData();
     }, [id]);
+
+    // Refresh assignment data when navigating back from edit
+    useEffect(() => {
+        if (location.state?.refresh) {
+            fetchAssignmentData();
+            // Clear the refresh flag
+            navigate(location.pathname, { replace: true, state: {} });
+        }
+    }, [location.state]);
 
     const fetchAssignmentData = async () => {
         setLoading(true);
@@ -63,6 +84,10 @@ function AssignmentDetailFaculty() {
             ]);
             setAssignment(assignmentRes.data);
             setSubmissions(submissionsRes.data);
+            
+            // Debug logging
+            console.log('Assignment data:', assignmentRes.data);
+            console.log('Submissions data:', submissionsRes.data);
         } catch (err) {
             setError("Failed to load assignment details.");
             console.error("Error fetching assignment data:", err);
@@ -72,7 +97,7 @@ function AssignmentDetailFaculty() {
     };
 
     const handleEditAssignment = () => {
-        navigate(`/faculty/assignments/${id}/edit`);
+        navigate(`/faculty/assignments/${id}/edit`, { state: { returnTo: `/faculty/assignments/${id}` } });
     };
 
     const handleDeleteAssignment = async () => {
@@ -97,8 +122,7 @@ function AssignmentDetailFaculty() {
         setGrading(true);
         try {
             const gradePayload = {
-                grade: parseFloat(gradeData.grade),
-                letterGrade: gradeData.letterGrade,
+                pointsEarned: parseInt(gradeData.pointsEarned),
                 feedback: gradeData.feedback
             };
             
@@ -107,13 +131,21 @@ function AssignmentDetailFaculty() {
             // Update local state
             setSubmissions(prev => prev.map(s => 
                 s.id === selectedSubmission.id 
-                    ? { ...s, ...gradePayload, status: s.isLate ? 'LATE_GRADED' : 'GRADED', gradedAt: new Date().toISOString() }
+                    ? { 
+                        ...s, 
+                        pointsEarned: parseInt(gradeData.pointsEarned),
+                        grade: gradeData.grade,
+                        letterGrade: gradeData.letterGrade,
+                        feedback: gradeData.feedback,
+                        status: s.isLate ? 'LATE_GRADED' : 'GRADED', 
+                        gradedAt: new Date().toISOString() 
+                    }
                     : s
             ));
             
             setShowGradeModal(false);
             setSelectedSubmission(null);
-            setGradeData({ grade: '', letterGrade: '', feedback: '' });
+            setGradeData({ pointsEarned: '', grade: '', letterGrade: '', feedback: '' });
         } catch (err) {
             setError("Failed to grade submission.");
             console.error("Error grading submission:", err);
@@ -125,6 +157,7 @@ function AssignmentDetailFaculty() {
     const openGradeModal = (submission) => {
         setSelectedSubmission(submission);
         setGradeData({
+            pointsEarned: submission.pointsEarned?.toString() || '',
             grade: submission.grade?.toString() || '',
             letterGrade: submission.letterGrade || '',
             feedback: submission.feedback || ''
@@ -184,6 +217,10 @@ function AssignmentDetailFaculty() {
                     <div>
                         <p className="text-sm font-medium text-gray-500">Due Date</p>
                         <p className="text-base text-gray-900">{formatDate(assignment.dueDate)}</p>
+                    </div>
+                    <div>
+                        <p className="text-sm font-medium text-gray-500">Total Points</p>
+                        <p className="text-base text-gray-900">{assignment.totalPoints || 100}</p>
                     </div>
                     <div>
                         <p className="text-sm font-medium text-gray-500">Status</p>
@@ -284,7 +321,9 @@ function AssignmentDetailFaculty() {
                                             <div>
                                                 <span className="font-medium text-gray-500">Grade:</span>
                                                 <span className="ml-2 text-gray-900">
-                                                    {submission.grade}% ({submission.letterGrade})
+                                                    {submission.pointsEarned ? `${submission.pointsEarned} / ${assignment.totalPoints || 100} points ` : ''}
+                                                    {submission.grade}% - {submission.letterGrade}
+                                                    {submission.performanceDescription ? ` - ${submission.performanceDescription}` : ''}
                                                 </span>
                                             </div>
                                         )}
@@ -360,6 +399,12 @@ function AssignmentDetailFaculty() {
                 </div>
             )}
 
+            {location.state?.success && (
+                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+                    {location.state.success}
+                </div>
+            )}
+
             {/* Tabs */}
             <div className="mb-6">
                 <div className="border-b border-gray-200">
@@ -419,42 +464,54 @@ function AssignmentDetailFaculty() {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Grade (%)
+                                    Points Earned (out of {assignment.totalPoints || 100})
                                 </label>
                                 <input
                                     type="number"
                                     min="0"
-                                    max="100"
+                                    max={assignment.totalPoints || 100}
                                     step="0.1"
-                                    value={gradeData.grade}
-                                    onChange={(e) => setGradeData(prev => ({ ...prev, grade: e.target.value }))}
+                                    value={gradeData.pointsEarned || ''}
+                                    onChange={(e) => {
+                                        const points = parseFloat(e.target.value) || 0;
+                                        const totalPoints = assignment.totalPoints || 100;
+                                        const percentage = totalPoints > 0 ? Math.round((points / totalPoints) * 100 * 10) / 10 : 0;
+                                        const letterGrade = calculateLetterGrade(percentage);
+                                        setGradeData(prev => ({ 
+                                            ...prev, 
+                                            pointsEarned: e.target.value,
+                                            grade: percentage,
+                                            letterGrade: letterGrade
+                                        }));
+                                    }}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                    placeholder={`0 - ${assignment.totalPoints || 100}`}
                                 />
                             </div>
                             
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Letter Grade
-                                </label>
-                                <select
-                                    value={gradeData.letterGrade}
-                                    onChange={(e) => setGradeData(prev => ({ ...prev, letterGrade: e.target.value }))}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                                >
-                                    <option value="">Select grade</option>
-                                    <option value="A+">A+</option>
-                                    <option value="A">A</option>
-                                    <option value="A-">A-</option>
-                                    <option value="B+">B+</option>
-                                    <option value="B">B</option>
-                                    <option value="B-">B-</option>
-                                    <option value="C+">C+</option>
-                                    <option value="C">C</option>
-                                    <option value="C-">C-</option>
-                                    <option value="D+">D+</option>
-                                    <option value="D">D</option>
-                                    <option value="F">F</option>
-                                </select>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Percentage (Auto-calculated)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={gradeData.grade ? `${gradeData.grade}%` : ''}
+                                        readOnly
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Letter Grade (Auto-calculated)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={gradeData.letterGrade || ''}
+                                        readOnly
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700"
+                                    />
+                                </div>
                             </div>
                             
                             <div>

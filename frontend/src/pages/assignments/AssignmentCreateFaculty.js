@@ -60,57 +60,27 @@ function AssignmentCreateFaculty() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        if (!formData.courseId) {
-            setError("Please select a course.");
+        // Validate required fields
+        if (!formData.name || !formData.courseId || !formData.dueDate || !formData.totalPoints) {
+            setError("Please fill in all required fields including total points.");
             return;
         }
-
-        if (!formData.dueDate || !formData.dueTime) {
-            setError("Please set both due date and time.");
+        
+        if (formData.totalPoints <= 0) {
+            setError("Total points must be greater than 0.");
             return;
         }
-
+        
         setSubmitting(true);
         setError("");
-
+        
         try {
-            // Parse the date and time inputs
-            const [year, month, day] = formData.dueDate.split('-').map(Number);
-            const [hours, minutes] = formData.dueTime.split(':').map(Number);
-            
-            // Create date in local timezone (assuming browser is in Kathmandu timezone)
-            const localDateTime = new Date(year, month - 1, day, hours, minutes);
-            
-            // Convert to UTC by subtracting the timezone offset
-            const utcDateTime = new Date(localDateTime.getTime() - (localDateTime.getTimezoneOffset() * 60000));
-            
-            const assignmentData = {
-                name: formData.name,
-                description: formData.description,
-                dueDate: utcDateTime.toISOString(),
-                courseId: parseInt(formData.courseId),
-                status: formData.status
-            };
-
-            // Create assignment first
-            const assignmentResponse = await createAssignment(assignmentData);
-            const assignment = assignmentResponse.data;
-
-            // Upload file if selected
-            if (selectedFile) {
-                await uploadAssignmentFile(assignment.id, selectedFile);
-            }
-
+            const response = await createAssignment(formData);
             navigate('/faculty/assignments', { 
                 state: { success: "Assignment created successfully!" } 
             });
         } catch (err) {
-            console.error("Error creating assignment:", err);
-            if (err.response?.data) {
-                setError("Failed to create assignment: " + err.response.data);
-            } else {
-                setError("Failed to create assignment. Please try again.");
-            }
+            setError("Failed to create assignment. " + (err.response?.data || err.message));
         } finally {
             setSubmitting(false);
         }
@@ -250,6 +220,31 @@ function AssignmentCreateFaculty() {
                             <option value="INACTIVE">Inactive</option>
                             <option value="DRAFT">Draft</option>
                         </select>
+                    </div>
+
+                    {/* Total Points */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Total Points <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="number"
+                            min="1"
+                            value={formData.totalPoints || ''}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setFormData(prev => ({ 
+                                    ...prev, 
+                                    totalPoints: value === '' ? null : parseInt(value) || null 
+                                }));
+                            }}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                            placeholder="100"
+                            required
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                            Total possible points for this assignment
+                        </p>
                     </div>
 
                     {/* File Upload */}

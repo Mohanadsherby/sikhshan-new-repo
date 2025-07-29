@@ -337,6 +337,10 @@ function AssignmentListStudent() {
                                                 <span className="font-medium text-gray-500">Due Date:</span>
                                                 <span className="ml-2 text-gray-900">{formatDate(assignment.dueDate)}</span>
                                             </div>
+                                            <div>
+                                                <span className="font-medium text-gray-500">Total Points:</span>
+                                                <span className="ml-2 text-gray-900">{assignment.totalPoints || 100}</span>
+                                            </div>
                                             {submission && (
                                                 <div>
                                                     <span className="font-medium text-gray-500">Submitted:</span>
@@ -347,7 +351,9 @@ function AssignmentListStudent() {
                                                 <div>
                                                     <span className="font-medium text-gray-500">Grade:</span>
                                                     <span className="ml-2 text-gray-900">
-                                                        {submission.grade}% ({submission.letterGrade})
+                                                        {submission.pointsEarned ? `${submission.pointsEarned} / ${assignment.totalPoints || 100} points ` : ''}
+                                                        {submission.grade}% - {submission.letterGrade}
+                                                        {submission.performanceDescription ? ` - ${submission.performanceDescription}` : ''}
                                                     </span>
                                                 </div>
                                             )}

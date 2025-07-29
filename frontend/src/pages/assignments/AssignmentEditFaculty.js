@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
     getAssignmentById, 
@@ -11,6 +11,7 @@ function AssignmentEditFaculty() {
     const { id } = useParams();
     const { currentUser } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [assignment, setAssignment] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -23,7 +24,9 @@ function AssignmentEditFaculty() {
         description: '',
         dueDate: '',
         dueTime: '',
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        totalPoints: 100,
+        courseId: null
     });
 
     useEffect(() => {
@@ -34,6 +37,7 @@ function AssignmentEditFaculty() {
         try {
             const response = await getAssignmentById(id);
             const assignmentData = response.data;
+            console.log('Assignment data received:', assignmentData);
             setAssignment(assignmentData);
             
             // Set form data - handle Kathmandu timezone properly
@@ -47,7 +51,9 @@ function AssignmentEditFaculty() {
                 description: assignmentData.description || '',
                 dueDate: kathmanduDate.toISOString().split('T')[0],
                 dueTime: kathmanduDate.toTimeString().slice(0, 5),
-                status: assignmentData.status || 'ACTIVE'
+                status: assignmentData.status || 'ACTIVE',
+                totalPoints: assignmentData.totalPoints || 100,
+                courseId: assignmentData.courseId
             });
         } catch (err) {
             setError("Failed to load assignment details.");
@@ -84,14 +90,20 @@ function AssignmentEditFaculty() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        if (!formData.dueDate || !formData.dueTime) {
-            setError("Please set both due date and time.");
+        // Validate required fields
+        if (!formData.name || !formData.dueDate || !formData.totalPoints || !formData.courseId) {
+            setError("Please fill in all required fields including total points.");
             return;
         }
-
+        
+        if (formData.totalPoints <= 0) {
+            setError("Total points must be greater than 0.");
+            return;
+        }
+        
         setSaving(true);
         setError("");
-
+        
         try {
             // Parse the date and time inputs
             const [year, month, day] = formData.dueDate.split('-').map(Number);
@@ -107,7 +119,9 @@ function AssignmentEditFaculty() {
                 name: formData.name,
                 description: formData.description,
                 dueDate: utcDateTime.toISOString(),
-                status: formData.status
+                status: formData.status,
+                totalPoints: formData.totalPoints,
+                courseId: formData.courseId
             };
 
             // Update assignment first
@@ -118,8 +132,10 @@ function AssignmentEditFaculty() {
                 await uploadAssignmentFile(id, selectedFile);
             }
 
-            navigate('/faculty/assignments', { 
-                state: { success: "Assignment updated successfully!" } 
+            // Navigate back to the appropriate page
+            const returnTo = location.state?.returnTo || '/faculty/assignments';
+            navigate(returnTo, { 
+                state: { success: "Assignment updated successfully!", refresh: true } 
             });
         } catch (err) {
             console.error("Error updating assignment:", err);
@@ -198,6 +214,10 @@ function AssignmentEditFaculty() {
                         <div>
                             <span className="font-medium text-gray-500">Instructor:</span>
                             <span className="ml-2 text-gray-900">{assignment?.instructorName}</span>
+                        </div>
+                        <div>
+                            <span className="font-medium text-gray-500">Current Total Points:</span>
+                            <span className="ml-2 text-gray-900">{assignment?.totalPoints || 100}</span>
                         </div>
                         <div>
                             <span className="font-medium text-gray-500">Created:</span>
@@ -289,6 +309,35 @@ function AssignmentEditFaculty() {
                                 <option value="INACTIVE">Inactive</option>
                                 <option value="DRAFT">Draft</option>
                             </select>
+                        </div>
+
+                        {/* Total Points */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                Total Points <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="number"
+                                min="1"
+                                value={formData.totalPoints || ''}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setFormData(prev => ({ 
+                                        ...prev, 
+                                        totalPoints: value === '' ? null : parseInt(value) || null 
+                                    }));
+                                }}
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                                placeholder="100"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">
+                                Total possible points for this assignment
+                            </p>
+                            {assignment && assignment.submissionCount > 0 && formData.totalPoints !== assignment.totalPoints && (
+                                <p className="text-xs text-orange-600 mt-1">
+                                    ⚠️ Changing total points will proportionally adjust all existing grades
+                                </p>
+                            )}
                         </div>
 
                         {/* Current File */}

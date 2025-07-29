@@ -200,6 +200,10 @@ function AssignmentDetailStudent() {
                                     {isOverdue && ' (Overdue)'}
                                 </span>
                             </div>
+                            <div>
+                                <span className="font-medium text-gray-500">Total Points:</span>
+                                <span className="ml-2 text-gray-900">{assignment.totalPoints || 100}</span>
+                            </div>
                             {assignment.description && (
                                 <div>
                                     <span className="font-medium text-gray-500">Description:</span>
