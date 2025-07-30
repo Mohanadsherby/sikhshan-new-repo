@@ -54,13 +54,14 @@ import QuizAttemptStudent from "./pages/quizzes/QuizAttemptStudent"
 import QuizResultStudent from "./pages/quizzes/QuizResultStudent"
 
 // Other Pages
-import Chat from "./pages/communication/Chat"
+import ChatPage from "./pages/communication/ChatPage"
 import Calendar from "./pages/calendar/Calendar"
 import PlagiarismResults from "./pages/plagiarism/PlagiarismResults"
 import AllNotifications from "./pages/notifications/AllNotifications"
 
-// Auth Context
+// Contexts
 import { AuthProvider } from "./contexts/AuthContext"
+import { WebSocketProvider } from "./contexts/WebSocketContext"
 import UserManagement from "./pages/admin/UserManagement"
 import SystemSettings from "./pages/admin/SystemSettings"
 import Reports from "./pages/admin/Reports"
@@ -110,7 +111,11 @@ function App() {
             <Route path="quizzes/:quizId/edit" element={<QuizEditFaculty />} />
             <Route path="quizzes/:quizId/view" element={<FacultyQuizView />} />
             <Route path="quizzes/:quizId/grade/:attemptId" element={<FacultyQuizGrade />} />
-            <Route path="chat" element={<Chat />} />
+            <Route path="chat" element={
+              <WebSocketProvider>
+                <ChatPage />
+              </WebSocketProvider>
+            } />
             <Route path="calendar" element={<Calendar />} />
             <Route path="profile" element={<Profile />} />
           </Route>
@@ -129,7 +134,11 @@ function App() {
             <Route path="settings" element={<SystemSettings />} />
             <Route path="reports" element={<Reports />} />
             <Route path="logs" element={<AuditLogs />} />
-            <Route path="chat" element={<Chat />} />
+            <Route path="chat" element={
+              <WebSocketProvider>
+                <ChatPage />
+              </WebSocketProvider>
+            } />
             <Route path="calendar" element={<Calendar />} />
             <Route path="profile" element={<Profile />} />
           </Route>
@@ -157,7 +166,11 @@ function App() {
             <Route path="profile" element={<Profile />} />
             <Route path="notifications" element={<AllNotifications />} />
             <Route path="plagiarism" element={<PlagiarismResults />} />
-            <Route path="chat" element={<Chat />} />
+            <Route path="chat" element={
+              <WebSocketProvider>
+                <ChatPage />
+              </WebSocketProvider>
+            } />
             <Route path="calendar" element={<Calendar />} />
           </Route>
 
