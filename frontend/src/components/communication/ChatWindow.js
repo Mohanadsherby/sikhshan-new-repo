@@ -176,13 +176,13 @@ const ChatWindow = ({ chatRoom, currentUser, onBack }) => {
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Type a message..."
-                        className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary hover:border-primary"
                         disabled={sending}
                     />
                     <button
                         type="submit"
                         disabled={!newMessage.trim() || sending}
-                        className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                        className="px-3 py-1.5 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                     >
                         {sending ? 'Sending...' : 'Send'}
                     </button>
@@ -205,7 +205,7 @@ const MessageItem = ({ message, isOwnMessage, currentUser }) => {
                         {isOwnMessage ? 'You' : getDisplayName(message.sender)}
                     </span>
                     <span className={`text-xs ${
-                        isOwnMessage ? 'text-blue-100' : 'text-gray-500'
+                        isOwnMessage ? 'text-primary-100' : 'text-gray-500'
                     }`}>
                         {formatMessageTime(message.createdAt)}
                     </span>
