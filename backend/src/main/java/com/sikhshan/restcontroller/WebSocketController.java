@@ -22,8 +22,7 @@ public class WebSocketController {
     private SimpMessagingTemplate messagingTemplate;
     
     @MessageMapping("/chat.sendMessage")
-    @SendTo("/topic/public")
-    public WebSocketMessage sendMessage(@Payload MessageRequest messageRequest, SimpMessageHeaderAccessor headerAccessor) {
+    public void sendMessage(@Payload MessageRequest messageRequest, SimpMessageHeaderAccessor headerAccessor) {
         try {
             // Extract sender ID from header
             String senderIdStr = headerAccessor.getUser() != null ? headerAccessor.getUser().getName() : null;
@@ -42,10 +41,12 @@ public class WebSocketController {
             // Send to specific chat room topic
             messagingTemplate.convertAndSend("/topic/chat/" + messageRequest.getChatRoomId(), wsMessage);
             
-            return wsMessage;
         } catch (Exception e) {
-            // Return error message
-            return new WebSocketMessage("ERROR", "Failed to send message: " + e.getMessage());
+            // Send error message to the specific user
+            WebSocketMessage errorMessage = new WebSocketMessage("ERROR", "Failed to send message: " + e.getMessage());
+            if (headerAccessor.getUser() != null) {
+                messagingTemplate.convertAndSend("/user/" + headerAccessor.getUser().getName() + "/queue/errors", errorMessage);
+            }
         }
     }
     
