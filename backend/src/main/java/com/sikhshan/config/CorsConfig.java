@@ -14,5 +14,12 @@ public class CorsConfig implements WebMvcConfigurer {
                 .allowedMethods("*")
                 .allowedHeaders("*")
                 .allowCredentials(false);
+        
+        // Add CORS for WebSocket endpoints
+        registry.addMapping("/ws/**")
+                .allowedOrigins("http://127.0.0.1:5500", "http://localhost:3000")
+                .allowedMethods("*")
+                .allowedHeaders("*")
+                .allowCredentials(true);
     }
 }
