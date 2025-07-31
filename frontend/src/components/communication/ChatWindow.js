@@ -74,7 +74,7 @@ const ChatWindow = ({ chatRoom, currentUser, onBack }) => {
             // Send message via REST API (more reliable)
             const sentMessage = await sendMessage(chatRoom.id, newMessage.trim(), currentUser.id);
             
-            // Add the new message to the list
+            // Add the new message to the list immediately
             setMessages(prev => [...prev, sentMessage]);
             setNewMessage('');
             scrollToBottom();
@@ -97,49 +97,49 @@ const ChatWindow = ({ chatRoom, currentUser, onBack }) => {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-full">
-            {/* Header */}
-            <div className="p-4 border-b border-gray-200 bg-white">
-                <div className="flex items-center space-x-3">
+        <div className="flex flex-col h-full overflow-hidden">
+            {/* Header - Fixed */}
+            <div className="p-3 border-b border-gray-200 bg-white flex-shrink-0">
+                <div className="flex items-center space-x-2">
                     <button
                         onClick={onBack}
-                        className="p-1 text-gray-600 hover:text-gray-800"
+                        className="p-1 text-gray-600 hover:text-gray-800 md:hidden"
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
                     
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-2">
                         {otherUser.profilePictureUrl ? (
                             <img
                                 src={otherUser.profilePictureUrl}
                                 alt={getDisplayName(otherUser)}
-                                className="w-8 h-8 rounded-full object-cover"
+                                className="w-6 h-6 rounded-full object-cover"
                             />
                         ) : (
-                            <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
-                                <span className="text-sm font-medium text-gray-600">
+                            <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center">
+                                <span className="text-xs font-medium text-gray-600">
                                     {getDisplayName(otherUser).charAt(0).toUpperCase()}
                                 </span>
                             </div>
                         )}
                         
                         <div>
-                            <h2 className="text-lg font-semibold text-gray-800">
+                            <h2 className="text-sm font-semibold text-gray-800">
                                 {getDisplayName(otherUser)}
                             </h2>
                             <div className="flex items-center">
-                                <div className={`w-2 h-2 rounded-full mr-2 ${
+                                <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
                                     otherUser.isOnline ? 'bg-green-500' : 'bg-gray-400'
                                 }`}></div>
-                                <span className="text-sm text-gray-500">
+                                <span className="text-xs text-gray-500">
                                     {otherUser.isOnline ? 'Online' : 'Offline'}
                                 </span>
                             </div>
@@ -148,12 +148,12 @@ const ChatWindow = ({ chatRoom, currentUser, onBack }) => {
                 </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Messages - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
                 {messages.length === 0 ? (
-                    <div className="text-center text-gray-500 mt-8">
-                        <p>No messages yet</p>
-                        <p className="text-sm">Start the conversation!</p>
+                    <div className="text-center text-gray-500 mt-6">
+                        <p className="text-sm">No messages yet</p>
+                        <p className="text-xs">Start the conversation!</p>
                     </div>
                 ) : (
                     messages.map((message) => (
@@ -168,21 +168,21 @@ const ChatWindow = ({ chatRoom, currentUser, onBack }) => {
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Message Input */}
-            <div className="p-4 border-t border-gray-200 bg-white">
-                <form onSubmit={handleSendMessage} className="flex space-x-3">
+            {/* Message Input - Fixed */}
+            <div className="p-3 border-t border-gray-200 bg-white flex-shrink-0">
+                <form onSubmit={handleSendMessage} className="flex space-x-2">
                     <input
                         type="text"
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         placeholder="Type a message..."
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                         disabled={sending}
                     />
                     <button
                         type="submit"
                         disabled={!newMessage.trim() || sending}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                     >
                         {sending ? 'Sending...' : 'Send'}
                     </button>
@@ -195,13 +195,13 @@ const ChatWindow = ({ chatRoom, currentUser, onBack }) => {
 const MessageItem = ({ message, isOwnMessage, currentUser }) => {
     return (
         <div className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+            <div className={`max-w-xs lg:max-w-sm px-3 py-1.5 rounded-lg ${
                 isOwnMessage 
                     ? 'bg-primary text-white' 
                     : 'bg-gray-200 text-gray-800'
             }`}>
-                <div className="flex items-center space-x-2 mb-1">
-                    <span className="text-sm font-medium">
+                <div className="flex items-center space-x-1.5 mb-0.5">
+                    <span className="text-xs font-medium">
                         {isOwnMessage ? 'You' : getDisplayName(message.sender)}
                     </span>
                     <span className={`text-xs ${
@@ -211,7 +211,7 @@ const MessageItem = ({ message, isOwnMessage, currentUser }) => {
                     </span>
                 </div>
                 
-                <p className={`text-sm ${
+                <p className={`text-xs ${
                     message.isDeleted ? 'italic opacity-75' : ''
                 }`}>
                     {message.isDeleted ? 'User deleted message' : message.content}

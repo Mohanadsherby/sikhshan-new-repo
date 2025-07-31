@@ -31,7 +31,7 @@ const ChatSidebar = ({ currentUserId, selectedChatRoom, onChatRoomSelect }) => {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
             </div>
         );
     }
@@ -41,8 +41,8 @@ const ChatSidebar = ({ currentUserId, selectedChatRoom, onChatRoomSelect }) => {
             {chatRooms.length === 0 ? (
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center text-gray-500">
-                        <p>No conversations yet</p>
-                        <p className="text-sm">Start a new chat to begin messaging</p>
+                        <p className="text-sm">No conversations yet</p>
+                        <p className="text-xs">Start a new chat to begin messaging</p>
                     </div>
                 </div>
             ) : (
@@ -55,22 +55,22 @@ const ChatSidebar = ({ currentUserId, selectedChatRoom, onChatRoomSelect }) => {
                             <div
                                 key={chatRoom.id}
                                 onClick={() => onChatRoomSelect(chatRoom)}
-                                className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                                className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
                                     isSelected ? 'bg-blue-50 border-blue-200' : ''
                                 }`}
                             >
-                                <div className="flex items-center space-x-3">
+                                <div className="flex items-center space-x-2">
                                     {/* User Avatar */}
                                     <div className="flex-shrink-0">
                                         {otherUser.profilePictureUrl ? (
                                             <img
                                                 src={otherUser.profilePictureUrl}
                                                 alt={getDisplayName(otherUser)}
-                                                className="w-10 h-10 rounded-full object-cover"
+                                                className="w-8 h-8 rounded-full object-cover"
                                             />
                                         ) : (
-                                            <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                                <span className="text-sm font-medium text-gray-600">
+                                            <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
+                                                <span className="text-xs font-medium text-gray-600">
                                                     {getDisplayName(otherUser).charAt(0).toUpperCase()}
                                                 </span>
                                             </div>
@@ -84,14 +84,14 @@ const ChatSidebar = ({ currentUserId, selectedChatRoom, onChatRoomSelect }) => {
                                                 {getDisplayName(otherUser)}
                                             </h3>
                                             {chatRoom.lastMessageAt && (
-                                                <span className="text-xs text-gray-500">
+                                                <span className="text-xs text-gray-500 ml-2">
                                                     {formatChatTime(chatRoom.lastMessageAt)}
                                                 </span>
                                             )}
                                         </div>
                                         
                                         {chatRoom.lastMessage && (
-                                            <p className="text-sm text-gray-500 truncate mt-1">
+                                            <p className="text-xs text-gray-500 truncate mt-0.5">
                                                 {chatRoom.lastMessage.isDeleted 
                                                     ? 'User deleted message'
                                                     : chatRoom.lastMessage.content
@@ -100,8 +100,8 @@ const ChatSidebar = ({ currentUserId, selectedChatRoom, onChatRoomSelect }) => {
                                         )}
 
                                         {/* Online Status */}
-                                        <div className="flex items-center mt-1">
-                                            <div className={`w-2 h-2 rounded-full mr-2 ${
+                                        <div className="flex items-center mt-0.5">
+                                            <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
                                                 otherUser.isOnline ? 'bg-green-500' : 'bg-gray-400'
                                             }`}></div>
                                             <span className="text-xs text-gray-500">

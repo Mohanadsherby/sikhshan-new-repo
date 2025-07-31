@@ -35,37 +35,37 @@ const UserSearch = ({ currentUserId, onUserSelect, onBack }) => {
     };
 
     return (
-        <div className="h-full flex flex-col">
-            {/* Header */}
-            <div className="p-4 border-b border-gray-200">
-                <div className="flex items-center space-x-3">
+        <div className="h-full flex flex-col overflow-hidden">
+            {/* Header - Fixed */}
+            <div className="p-3 border-b border-gray-200 flex-shrink-0">
+                <div className="flex items-center space-x-2">
                     <button
                         onClick={onBack}
                         className="p-1 text-gray-600 hover:text-gray-800"
                     >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
                     </button>
-                    <h2 className="text-lg font-semibold text-gray-800">New Message</h2>
+                    <h2 className="text-sm font-semibold text-gray-800">New Message</h2>
                 </div>
             </div>
 
-            {/* Search Form */}
-            <div className="p-4 border-b border-gray-200">
-                <form onSubmit={handleSearch} className="space-y-3">
+            {/* Search Form - Fixed */}
+            <div className="p-3 border-b border-gray-200 flex-shrink-0">
+                <form onSubmit={handleSearch} className="space-y-2">
                     <input
                         type="text"
                         placeholder="Search by name or email..."
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
                     />
                     
                     <select
                         value={role}
                         onChange={(e) => setRole(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
                     >
                         <option value="">All Roles</option>
                         <option value="STUDENT">Students</option>
@@ -75,26 +75,26 @@ const UserSearch = ({ currentUserId, onUserSelect, onBack }) => {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50"
+                        className="w-full px-3 py-1.5 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 text-sm"
                     >
                         {loading ? 'Searching...' : 'Search'}
                     </button>
                 </form>
             </div>
 
-            {/* Results */}
+            {/* Results - Scrollable */}
             <div className="flex-1 overflow-y-auto">
                 {loading ? (
                     <div className="flex items-center justify-center h-full">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
                     </div>
                 ) : (
-                    <div className="p-4 space-y-4">
+                    <div className="p-3 space-y-3">
                         {/* Suggested Users */}
                         {suggestedUsers.length > 0 && (
                             <div>
-                                <h3 className="text-sm font-medium text-gray-700 mb-3">Suggested</h3>
-                                <div className="space-y-2">
+                                <h3 className="text-xs font-medium text-gray-700 mb-2">Suggested</h3>
+                                <div className="space-y-1">
                                     {suggestedUsers.map((user) => (
                                         <UserCard
                                             key={user.id}
@@ -109,8 +109,8 @@ const UserSearch = ({ currentUserId, onUserSelect, onBack }) => {
                         {/* Search Results */}
                         {users.length > 0 && (
                             <div>
-                                <h3 className="text-sm font-medium text-gray-700 mb-3">Search Results</h3>
-                                <div className="space-y-2">
+                                <h3 className="text-xs font-medium text-gray-700 mb-2">Search Results</h3>
+                                <div className="space-y-1">
                                     {users.map((user) => (
                                         <UserCard
                                             key={user.id}
@@ -124,7 +124,7 @@ const UserSearch = ({ currentUserId, onUserSelect, onBack }) => {
 
                         {!loading && users.length === 0 && suggestedUsers.length === 0 && (
                             <div className="text-center text-gray-500">
-                                <p>No users found</p>
+                                <p className="text-sm">No users found</p>
                             </div>
                         )}
                     </div>
@@ -138,7 +138,7 @@ const UserCard = ({ user, onClick }) => {
     return (
         <div
             onClick={onClick}
-            className="flex items-center space-x-3 p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+            className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
         >
             {/* Avatar */}
             <div className="flex-shrink-0">
@@ -146,11 +146,11 @@ const UserCard = ({ user, onClick }) => {
                     <img
                         src={user.profilePictureUrl}
                         alt={getUserDisplayName(user)}
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-8 h-8 rounded-full object-cover"
                     />
                 ) : (
-                    <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
-                        <span className="text-sm font-medium text-gray-600">
+                    <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
+                        <span className="text-xs font-medium text-gray-600">
                             {getUserDisplayName(user).charAt(0).toUpperCase()}
                         </span>
                     </div>
@@ -163,9 +163,9 @@ const UserCard = ({ user, onClick }) => {
                     {getUserDisplayName(user)}
                 </h4>
                 <p className="text-xs text-gray-500 truncate">{user.email}</p>
-                <div className="flex items-center mt-1">
+                <div className="flex items-center mt-0.5">
                     <span className="text-xs text-gray-500">{getUserRoleDisplay(user.role)}</span>
-                    <div className={`w-2 h-2 rounded-full ml-2 ${
+                    <div className={`w-1.5 h-1.5 rounded-full ml-1.5 ${
                         user.isOnline ? 'bg-green-500' : 'bg-gray-400'
                     }`}></div>
                 </div>

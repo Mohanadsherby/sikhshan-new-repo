@@ -59,32 +59,22 @@ const ChatPage = () => {
     }
 
     return (
-        <div className="h-screen flex bg-gray-50">
-            {/* Sidebar */}
-            <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+        <div className="h-full w-full flex bg-gray-50 overflow-hidden">
+            {/* Sidebar - Responsive width */}
+            <div className={`${selectedChatRoom ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-72 bg-white border-r border-gray-200 flex-col overflow-hidden`}>
                 {/* Header */}
-                <div className="p-4 border-b border-gray-200">
+                <div className="p-3 border-b border-gray-200 flex-shrink-0">
                     <div className="flex items-center justify-between">
-                        <h1 className="text-xl font-semibold text-gray-800">Messages</h1>
+                        <h1 className="text-lg font-semibold text-gray-800">Messages</h1>
                         <button
                             onClick={handleNewMessage}
-                            className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
+                            className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-full transition-colors"
                             title="New Message"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                             </svg>
                         </button>
-                    </div>
-                    
-                    {/* Connection Status */}
-                    <div className="flex items-center mt-2">
-                        <div className={`w-2 h-2 rounded-full mr-2 ${
-                            isConnected ? 'bg-green-500' : 'bg-red-500'
-                        }`}></div>
-                        <span className="text-xs text-gray-500">
-                            {isConnected ? 'Connected' : 'Disconnected'}
-                        </span>
                     </div>
                 </div>
 
@@ -107,7 +97,7 @@ const ChatPage = () => {
             </div>
 
             {/* Main Chat Area */}
-            <div className="flex-1 flex flex-col">
+            <div className={`${selectedChatRoom ? 'flex' : 'hidden md:flex'} flex-1 flex flex-col overflow-hidden`}>
                 {selectedChatRoom ? (
                     <ChatWindow
                         chatRoom={selectedChatRoom}
@@ -123,16 +113,16 @@ const ChatPage = () => {
                 ) : (
                     <div className="flex-1 flex items-center justify-center">
                         <div className="text-center text-gray-500">
-                            <div className="w-16 h-16 mx-auto mb-4 bg-gray-200 rounded-full flex items-center justify-center">
-                                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="w-12 h-12 mx-auto mb-3 bg-gray-200 rounded-full flex items-center justify-center">
+                                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                 </svg>
                             </div>
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">Welcome to Chat</h3>
-                            <p className="text-gray-600 mb-4">Select a conversation or start a new one</p>
+                            <h3 className="text-base font-medium text-gray-900 mb-2">Welcome to Chat</h3>
+                            <p className="text-sm text-gray-600 mb-3">Select a conversation or start a new one</p>
                             <button
                                 onClick={handleNewMessage}
-                                className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors"
+                                className="px-3 py-1.5 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors text-sm"
                             >
                                 Start New Chat
                             </button>
@@ -144,9 +134,9 @@ const ChatPage = () => {
             {/* Loading Overlay */}
             {loading && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                        <span className="text-gray-700">Creating chat room...</span>
+                    <div className="bg-white rounded-lg p-4 flex items-center space-x-3">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                        <span className="text-gray-700 text-sm">Creating chat room...</span>
                     </div>
                 </div>
             )}
