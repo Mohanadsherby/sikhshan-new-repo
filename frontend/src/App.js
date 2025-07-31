@@ -60,7 +60,7 @@ import PlagiarismResults from "./pages/plagiarism/PlagiarismResults"
 import AllNotifications from "./pages/notifications/AllNotifications"
 
 // Contexts
-import { AuthProvider } from "./contexts/AuthContext"
+import { AuthProvider, useAuth } from "./contexts/AuthContext"
 import { WebSocketProvider } from "./contexts/WebSocketContext"
 import UserManagement from "./pages/admin/UserManagement"
 import SystemSettings from "./pages/admin/SystemSettings"
@@ -72,6 +72,19 @@ import Settings from "./pages/Settings"
 import ProtectedRoute from "./components/ProtectedRoute"
 import Unauthorized from "./pages/Unauthorized"
 import UserDetails from "./pages/admin/UserDetails";
+
+// Chat Wrapper Component
+const ChatWrapper = () => {
+    const { currentUser } = useAuth();
+    console.log('🔌 ChatWrapper - currentUser:', currentUser);
+    console.log('🔌 ChatWrapper - userId:', currentUser?.id);
+    
+    return (
+        <WebSocketProvider userId={currentUser?.id}>
+            <ChatPage />
+        </WebSocketProvider>
+    );
+};
 
 function App() {
   return (
@@ -111,11 +124,7 @@ function App() {
             <Route path="quizzes/:quizId/edit" element={<QuizEditFaculty />} />
             <Route path="quizzes/:quizId/view" element={<FacultyQuizView />} />
             <Route path="quizzes/:quizId/grade/:attemptId" element={<FacultyQuizGrade />} />
-            <Route path="chat" element={
-              <WebSocketProvider>
-                <ChatPage />
-              </WebSocketProvider>
-            } />
+            <Route path="chat" element={<ChatWrapper />} />
             <Route path="calendar" element={<Calendar />} />
             <Route path="profile" element={<Profile />} />
           </Route>
@@ -134,11 +143,7 @@ function App() {
             <Route path="settings" element={<SystemSettings />} />
             <Route path="reports" element={<Reports />} />
             <Route path="logs" element={<AuditLogs />} />
-            <Route path="chat" element={
-              <WebSocketProvider>
-                <ChatPage />
-              </WebSocketProvider>
-            } />
+            <Route path="chat" element={<ChatWrapper />} />
             <Route path="calendar" element={<Calendar />} />
             <Route path="profile" element={<Profile />} />
           </Route>
@@ -166,11 +171,7 @@ function App() {
             <Route path="profile" element={<Profile />} />
             <Route path="notifications" element={<AllNotifications />} />
             <Route path="plagiarism" element={<PlagiarismResults />} />
-            <Route path="chat" element={
-              <WebSocketProvider>
-                <ChatPage />
-              </WebSocketProvider>
-            } />
+            <Route path="chat" element={<ChatWrapper />} />
             <Route path="calendar" element={<Calendar />} />
           </Route>
 

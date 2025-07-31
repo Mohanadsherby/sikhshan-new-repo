@@ -19,25 +19,51 @@ const ChatWindow = ({ chatRoom, currentUser, onBack }) => {
 
     useEffect(() => {
         // Subscribe to chat room messages
-        if (isConnected) {
+        if (isConnected && chatRoom?.id) {
+            console.log('🔌 Subscribing to chat room:', chatRoom.id);
+            
             const subscription = subscribe(`/topic/chat/${chatRoom.id}`, (message) => {
+                console.log('📨 Received WebSocket message:', message);
+                
                 if (message.type === 'NEW_MESSAGE') {
-                    setMessages(prev => [...prev, message.data]);
-                    scrollToBottom();
+                    // Check if message is not from current user (to avoid duplicates)
+                    if (message.data.sender.id !== currentUser.id) {
+                        console.log('➕ Adding new message from other user:', message.data);
+                        setMessages(prev => {
+                            // Check if message already exists to avoid duplicates
+                            const exists = prev.some(msg => msg.id === message.data.id);
+                            if (!exists) {
+                                return [...prev, message.data];
+                            }
+                            console.log('⚠️ Message already exists, skipping duplicate');
+                            return prev;
+                        });
+                        scrollToBottom();
+                    } else {
+                        console.log('✅ Message from current user, skipping (already added)');
+                    }
                 } else if (message.type === 'MESSAGE_DELETED') {
+                    console.log('🗑️ Message deleted:', message.data);
                     setMessages(prev => prev.map(msg => 
                         msg.id === message.data ? { ...msg, isDeleted: true, content: 'User deleted message' } : msg
                     ));
+                } else if (message.type === 'MESSAGE_READ') {
+                    console.log('👁️ Message read:', message.data);
+                } else {
+                    console.log('❓ Unknown message type:', message.type);
                 }
             });
 
             return () => {
                 if (subscription) {
+                    console.log('🔌 Unsubscribing from chat room:', chatRoom.id);
                     subscription.unsubscribe();
                 }
             };
+        } else {
+            console.log('❌ Cannot subscribe: isConnected=', isConnected, 'chatRoom.id=', chatRoom?.id);
         }
-    }, [isConnected, chatRoom.id]);
+    }, [isConnected, chatRoom?.id, currentUser.id]);
 
     const fetchMessages = async () => {
         try {
@@ -61,34 +87,40 @@ const ChatWindow = ({ chatRoom, currentUser, onBack }) => {
     };
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
     };
 
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if (!newMessage.trim() || sending) return;
 
+        const messageContent = newMessage.trim();
+        setNewMessage(''); // Clear input immediately for better UX
+
         try {
             setSending(true);
             
             // Send message via REST API (more reliable)
-            const sentMessage = await sendMessage(chatRoom.id, newMessage.trim(), currentUser.id);
+            const sentMessage = await sendMessage(chatRoom.id, messageContent, currentUser.id);
             
             // Add the new message to the list immediately
             setMessages(prev => [...prev, sentMessage]);
-            setNewMessage('');
             scrollToBottom();
             
-            // Try to send via WebSocket as well (for real-time updates)
+            // Also send via WebSocket for real-time updates to other users
             if (isConnected) {
                 sendWebSocketMessage('/app/chat.sendMessage', {
                     chatRoomId: chatRoom.id,
-                    content: newMessage.trim(),
+                    content: messageContent,
                     messageType: 'TEXT'
                 });
             }
         } catch (error) {
             console.error('Error sending message:', error);
+            // Restore the message if sending failed
+            setNewMessage(messageContent);
         } finally {
             setSending(false);
         }
@@ -103,7 +135,7 @@ const ChatWindow = ({ chatRoom, currentUser, onBack }) => {
     }
 
     return (
-        <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col h-full overflow-hidden min-h-0">
             {/* Header - Fixed */}
             <div className="p-3 border-b border-gray-200 bg-white flex-shrink-0">
                 <div className="flex items-center space-x-2">
@@ -149,7 +181,7 @@ const ChatWindow = ({ chatRoom, currentUser, onBack }) => {
             </div>
 
             {/* Messages - Scrollable */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
                 {messages.length === 0 ? (
                     <div className="text-center text-gray-500 mt-6">
                         <p className="text-sm">No messages yet</p>

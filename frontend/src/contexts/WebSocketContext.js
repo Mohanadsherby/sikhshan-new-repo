@@ -20,18 +20,27 @@ export const WebSocketProvider = ({ children, userId }) => {
     const reconnectTimeoutRef = useRef(null);
 
     const connect = () => {
-        if (isConnecting || isConnected) return;
+        console.log('🔌 Attempting to connect WebSocket with userId:', userId);
+        if (isConnecting || isConnected) {
+            console.log('❌ Already connecting or connected, skipping');
+            return;
+        }
 
         setIsConnecting(true);
         setError(null);
 
         try {
+            console.log('🔌 Creating SockJS connection to http://localhost:8081/ws');
             // Create SockJS connection
             const socket = new SockJS('http://localhost:8081/ws');
             
+            console.log('🔌 Creating STOMP client');
             // Create STOMP client
             stompClient.current = new Client({
                 webSocketFactory: () => socket,
+                connectHeaders: {
+                    'user-id': userId?.toString() || ''
+                },
                 debug: (str) => {
                     console.log('STOMP Debug:', str);
                 },
@@ -42,18 +51,20 @@ export const WebSocketProvider = ({ children, userId }) => {
 
             // Connection handlers
             stompClient.current.onConnect = (frame) => {
-                console.log('Connected to WebSocket:', frame);
+                console.log('✅ Connected to WebSocket:', frame);
                 setIsConnected(true);
                 setIsConnecting(false);
                 setError(null);
 
                 // Mark user as online
                 if (userId) {
+                    console.log('👤 Marking user as online:', userId);
                     markUserOnline();
                 }
 
                 // Subscribe to user-specific queue for errors
                 if (userId) {
+                    console.log('📡 Subscribing to error queue for user:', userId);
                     stompClient.current.subscribe(`/user/${userId}/queue/errors`, (message) => {
                         console.error('WebSocket Error:', message.body);
                         setError(JSON.parse(message.body));
@@ -62,26 +73,27 @@ export const WebSocketProvider = ({ children, userId }) => {
             };
 
             stompClient.current.onStompError = (frame) => {
-                console.error('STOMP Error:', frame);
+                console.error('❌ STOMP Error:', frame);
                 setError('WebSocket connection error');
                 setIsConnected(false);
                 setIsConnecting(false);
             };
 
             stompClient.current.onWebSocketError = (error) => {
-                console.error('WebSocket Error:', error);
+                console.error('❌ WebSocket Error:', error);
                 setError('WebSocket connection failed');
                 setIsConnected(false);
                 setIsConnecting(false);
             };
 
             stompClient.current.onWebSocketClose = () => {
-                console.log('WebSocket connection closed');
+                console.log('🔌 WebSocket connection closed');
                 setIsConnected(false);
                 setIsConnecting(false);
                 
                 // Mark user as offline
                 if (userId) {
+                    console.log('👤 Marking user as offline:', userId);
                     markUserOffline();
                 }
 
@@ -91,11 +103,13 @@ export const WebSocketProvider = ({ children, userId }) => {
                 }
                 reconnectTimeoutRef.current = setTimeout(() => {
                     if (!isConnected) {
+                        console.log('🔄 Attempting to reconnect...');
                         connect();
                     }
                 }, 5000);
             };
 
+            console.log('🔌 Activating STOMP client');
             // Connect to WebSocket
             stompClient.current.activate();
 
@@ -123,14 +137,16 @@ export const WebSocketProvider = ({ children, userId }) => {
 
     const subscribe = (destination, callback) => {
         if (!stompClient.current || !isConnected) {
-            console.warn('WebSocket not connected');
+            console.warn('WebSocket not connected, cannot subscribe to:', destination);
             return null;
         }
 
         try {
+            console.log('Subscribing to:', destination);
             const subscription = stompClient.current.subscribe(destination, (message) => {
                 try {
                     const data = JSON.parse(message.body);
+                    console.log('Received message from', destination, ':', data);
                     callback(data);
                 } catch (error) {
                     console.error('Error parsing WebSocket message:', error);
@@ -140,18 +156,19 @@ export const WebSocketProvider = ({ children, userId }) => {
 
             return subscription;
         } catch (error) {
-            console.error('Error subscribing to destination:', error);
+            console.error('Error subscribing to destination:', destination, error);
             return null;
         }
     };
 
     const sendMessage = (destination, message) => {
         if (!stompClient.current || !isConnected) {
-            console.warn('WebSocket not connected');
+            console.warn('WebSocket not connected, cannot send message to:', destination);
             return false;
         }
 
         try {
+            console.log('📤 Sending message to:', destination, message);
             stompClient.current.publish({
                 destination: destination,
                 body: JSON.stringify(message),
@@ -194,11 +211,16 @@ export const WebSocketProvider = ({ children, userId }) => {
 
     // Connect on mount and when userId changes
     useEffect(() => {
+        console.log('🔄 WebSocket useEffect triggered with userId:', userId);
         if (userId) {
+            console.log('✅ UserId provided, attempting to connect...');
             connect();
+        } else {
+            console.log('❌ No userId provided, skipping connection');
         }
 
         return () => {
+            console.log('🧹 Cleaning up WebSocket connection');
             disconnect();
         };
     }, [userId]);

@@ -55,21 +55,21 @@ const ChatSidebar = ({ currentUserId, selectedChatRoom, onChatRoomSelect }) => {
                             <div
                                 key={chatRoom.id}
                                 onClick={() => onChatRoomSelect(chatRoom)}
-                                className={`p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
-                                    isSelected ? 'bg-blue-50 border-blue-200' : ''
+                                className={`p-2 md:p-3 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                                    isSelected ? 'bg-primary-50 border-primary-200' : ''
                                 }`}
                             >
-                                <div className="flex items-center space-x-2">
+                                <div className="flex items-center space-x-2 md:space-x-3">
                                     {/* User Avatar */}
                                     <div className="flex-shrink-0">
                                         {otherUser.profilePictureUrl ? (
                                             <img
                                                 src={otherUser.profilePictureUrl}
                                                 alt={getDisplayName(otherUser)}
-                                                className="w-8 h-8 rounded-full object-cover"
+                                                className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover"
                                             />
                                         ) : (
-                                            <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center">
+                                            <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gray-300 flex items-center justify-center">
                                                 <span className="text-xs font-medium text-gray-600">
                                                     {getDisplayName(otherUser).charAt(0).toUpperCase()}
                                                 </span>
@@ -80,11 +80,11 @@ const ChatSidebar = ({ currentUserId, selectedChatRoom, onChatRoomSelect }) => {
                                     {/* Chat Info */}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center justify-between">
-                                            <h3 className="text-sm font-medium text-gray-900 truncate">
+                                            <h3 className="text-xs md:text-sm font-medium text-gray-900 truncate">
                                                 {getDisplayName(otherUser)}
                                             </h3>
                                             {chatRoom.lastMessageAt && (
-                                                <span className="text-xs text-gray-500 ml-2">
+                                                <span className="text-xs text-gray-500 ml-1 md:ml-2">
                                                     {formatChatTime(chatRoom.lastMessageAt)}
                                                 </span>
                                             )}

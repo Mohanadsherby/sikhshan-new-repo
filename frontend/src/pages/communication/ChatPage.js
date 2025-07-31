@@ -59,11 +59,11 @@ const ChatPage = () => {
     }
 
     return (
-        <div className="h-full w-full flex bg-gray-50 overflow-hidden">
+        <div className="h-screen w-full flex bg-gray-50 overflow-hidden">
             {/* Sidebar - Responsive width */}
             <div className={`${selectedChatRoom ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-72 bg-white border-r border-gray-200 flex-col overflow-hidden`}>
                 {/* Header */}
-                <div className="p-3 border-b border-gray-200 flex-shrink-0">
+                <div className="p-3 border-b border-gray-200 flex-shrink-0 bg-white">
                     <div className="flex items-center justify-between">
                         <h1 className="text-lg font-semibold text-gray-800">Messages</h1>
                         <button
@@ -79,7 +79,7 @@ const ChatPage = () => {
                 </div>
 
                 {/* Sidebar Content */}
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 overflow-hidden min-h-0">
                     {showUserSearch ? (
                         <UserSearch
                             currentUserId={currentUser.id}
@@ -97,7 +97,7 @@ const ChatPage = () => {
             </div>
 
             {/* Main Chat Area */}
-            <div className={`${selectedChatRoom ? 'flex' : 'hidden md:flex'} flex-1 flex flex-col overflow-hidden`}>
+            <div className={`${selectedChatRoom ? 'flex' : 'hidden md:flex'} flex-1 flex flex-col overflow-hidden min-h-0`}>
                 {selectedChatRoom ? (
                     <ChatWindow
                         chatRoom={selectedChatRoom}
