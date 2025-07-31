@@ -31,8 +31,8 @@ public class ChatService {
     @Autowired
     private UserRepository userRepository;
     
-    // @Autowired
-    // private UserStatusRepository userStatusRepository; // Temporarily disabled
+    @Autowired
+    private UserStatusRepository userStatusRepository;
     
     // Chat Room Operations
     
@@ -172,42 +172,39 @@ public class ChatService {
     // User Status Operations
     
     public void markUserOnline(Long userId) {
-        // Temporary fix: Skip user status updates until database is updated
-        // UserStatus userStatus = userStatusRepository.findByUserId(userId)
-        //         .orElseGet(() -> {
-        //             User user = userRepository.findById(userId)
-        //                     .orElseThrow(() -> new RuntimeException("User not found"));
-        //             return new UserStatus(user);
-        //         });
+        UserStatus userStatus = userStatusRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new RuntimeException("User not found"));
+                    return new UserStatus(user);
+                });
         
-        // userStatus.markOnline();
-        // userStatusRepository.save(userStatus);
+        userStatus.markOnline();
+        userStatusRepository.save(userStatus);
     }
     
     public void markUserOffline(Long userId) {
-        // Temporary fix: Skip user status updates until database is updated
-        // UserStatus userStatus = userStatusRepository.findByUserId(userId)
-        //         .orElseGet(() -> {
-        //             User user = userRepository.findById(userId)
-        //                     .orElseThrow(() -> new RuntimeException("User not found"));
-        //             return new UserStatus(user);
-        //         });
+        UserStatus userStatus = userStatusRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new RuntimeException("User not found"));
+                    return new UserStatus(user);
+                });
         
-        // userStatus.markOffline();
-        // userStatusRepository.save(userStatus);
+        userStatus.markOffline();
+        userStatusRepository.save(userStatus);
     }
     
     public void updateUserLastSeen(Long userId) {
-        // Temporary fix: Skip user status updates until database is updated
-        // UserStatus userStatus = userStatusRepository.findByUserId(userId)
-        //         .orElseGet(() -> {
-        //             User user = userRepository.findById(userId)
-        //                     .orElseThrow(() -> new RuntimeException("User not found"));
-        //             return new UserStatus(user);
-        //         });
+        UserStatus userStatus = userStatusRepository.findByUserId(userId)
+                .orElseGet(() -> {
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new RuntimeException("User not found"));
+                    return new UserStatus(user);
+                });
         
-        // userStatus.updateLastSeen();
-        // userStatusRepository.save(userStatus);
+        userStatus.updateLastSeen();
+        userStatusRepository.save(userStatus);
     }
     
     // Helper Methods

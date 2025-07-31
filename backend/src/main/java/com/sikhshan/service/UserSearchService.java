@@ -4,8 +4,10 @@ import com.sikhshan.dto.UserSearchRequest;
 import com.sikhshan.dto.UserSearchResponse;
 import com.sikhshan.model.Enrollment;
 import com.sikhshan.model.User;
+import com.sikhshan.model.UserStatus;
 import com.sikhshan.repository.EnrollmentRepository;
 import com.sikhshan.repository.UserRepository;
+import com.sikhshan.repository.UserStatusRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,8 +25,8 @@ public class UserSearchService {
     @Autowired
     private UserRepository userRepository;
     
-    // @Autowired
-    // private UserStatusRepository userStatusRepository; // Temporarily disabled
+    @Autowired
+    private UserStatusRepository userStatusRepository;
     
     @Autowired
     private EnrollmentRepository enrollmentRepository;
