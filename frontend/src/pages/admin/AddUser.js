@@ -13,7 +13,7 @@ function AddUser() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    role: "student",
+    role: "STUDENT",
     password: "",
     confirmPassword: "",
   })
