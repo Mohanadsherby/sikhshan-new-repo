@@ -82,11 +82,11 @@ function QuizListFaculty() {
   const getStatusBadge = (quiz) => {
     const status = getQuizStatus(quiz)
     if (status === 'ACTIVE') {
-      return <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">Active</span>
+      return <span className="px-3 py-1 text-sm font-medium bg-green-100 text-green-800 rounded-full border border-green-200">Active</span>
     } else if (status === 'NOT_STARTED') {
-      return <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">Not Started</span>
+      return <span className="px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-full border border-blue-200">Not Started</span>
     } else {
-      return <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">Ended</span>
+      return <span className="px-3 py-1 text-sm font-medium bg-gray-100 text-gray-800 rounded-full border border-gray-200">Ended</span>
     }
   }
 
@@ -106,10 +106,14 @@ function QuizListFaculty() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Quizzes</h1>
-        <div className="flex space-x-4 mt-4 md:mt-0">
+    <div className="container mx-auto px-6 py-8">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+        <div>
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">All Quizzes</h1>
+          <p className="text-gray-600">Manage and monitor your course quizzes</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-4 mt-6 md:mt-0">
           {!loading && (
             <select
               value={filter}
@@ -126,76 +130,85 @@ function QuizListFaculty() {
             state={{ refresh: false }}
             className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark"
           >
-            Create Quiz
+            + Create Quiz
           </Link>
         </div>
       </div>
 
-      {error && <div className="text-center py-4 text-red-600">{error}</div>}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg mb-6">
+          {error}
+        </div>
+      )}
       
       {location.state?.success && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div className="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-lg mb-6">
           {location.state.success}
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Quiz List */}
         <div className="lg:col-span-2">
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-lg font-semibold text-gray-800">All Quizzes</h2>
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
+            <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+              <h2 className="text-xl font-semibold text-gray-800">Quiz Overview</h2>
+              <p className="text-gray-600 mt-1">Click on a quiz to view details and manage attempts</p>
             </div>
-            <div className="divide-y divide-gray-200">
+            <div className="divide-y divide-gray-100">
               {filteredQuizzes.map((quiz) => (
                 <div
                   key={quiz.id}
-                  className={`p-6 hover:bg-gray-50 cursor-pointer ${quiz.id === location.state?.selectedQuizId ? 'bg-primary-50' : ''}`}
+                  className={`p-8 hover:bg-gray-50 cursor-pointer transition-all duration-200 ${quiz.id === location.state?.selectedQuizId ? 'bg-primary-50 border-l-4 border-primary' : ''}`}
                   onClick={() => navigate(`/faculty/quizzes/${quiz.id}/view`, { state: { selectedQuizId: quiz.id } })}
                 >
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">{quiz.name}</h3>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {quiz.courseName}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Start: {formatDate(quiz.startDateTime)} (Duration: {quiz.durationMinutes} minutes)
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Total Points: {quiz.totalPoints} | Attempts: {quiz.attemptCount || 0}
-                    </p>
-                  </div>
-                  <div className="mt-4 md:mt-0 flex items-center space-x-4">
-                    {getStatusBadge(quiz)}
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          navigate(`/faculty/quizzes/${quiz.id}/edit`)
-                        }}
-                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          navigate(`/faculty/quizzes/${quiz.id}`)
-                        }}
-                        className="px-3 py-1 text-sm bg-primary text-white rounded hover:bg-primary-dark"
-                      >
-                        Details
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          navigate(`/faculty/quizzes/${quiz.id}/view`)
-                        }}
-                        className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
-                      >
-                        Attempts
-                      </button>
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex-1 mb-6 lg:mb-0">
+                      <div className="flex items-center gap-3 mb-3">
+                        <h3 className="text-xl font-semibold text-gray-900">{quiz.name}</h3>
+                        {getStatusBadge(quiz)}
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-gray-600 font-medium">
+                          {quiz.courseName}
+                        </p>
+                        <p className="text-gray-500">
+                          Start: {formatDate(quiz.startDateTime)} • Duration: {quiz.durationMinutes} minutes
+                        </p>
+                        <p className="text-gray-500">
+                          Total Points: {quiz.totalPoints} • Attempts: {quiz.attemptCount || 0}
+                        </p>
+                      </div>
                     </div>
+                                          <div className="flex flex-col sm:flex-row gap-3">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/faculty/quizzes/${quiz.id}/edit`)
+                          }}
+                          className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/faculty/quizzes/${quiz.id}`)
+                          }}
+                          className="px-3 py-1 text-sm bg-primary text-white rounded hover:bg-primary-dark"
+                        >
+                          Details
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/faculty/quizzes/${quiz.id}/view`)
+                          }}
+                          className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                        >
+                          Attempts
+                        </button>
+                      </div>
                   </div>
                 </div>
               ))}
@@ -203,43 +216,59 @@ function QuizListFaculty() {
           </div>
         </div>
 
-        {/* Quiz Details */}
+        {/* Quiz Details Sidebar */}
         <div>
           {location.state?.selectedQuizId && quizzes.find(q => q.id === location.state.selectedQuizId) ? (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">{quizzes.find(q => q.id === location.state.selectedQuizId)?.name}</h2>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Course</p>
-                  <p className="text-base text-gray-900">
-                    {quizzes.find(q => q.id === location.state.selectedQuizId)?.courseName}
-                  </p>
+            <div className="bg-white rounded-xl shadow-lg p-8 border border-gray-100 sticky top-8">
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                  {quizzes.find(q => q.id === location.state.selectedQuizId)?.name}
+                </h2>
+                {getStatusBadge(quizzes.find(q => q.id === location.state.selectedQuizId))}
+              </div>
+              
+              <div className="space-y-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Quiz Information</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 mb-1">Course</p>
+                      <p className="text-base text-gray-900 font-medium">
+                        {quizzes.find(q => q.id === location.state.selectedQuizId)?.courseName}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 mb-1">Start Time</p>
+                      <p className="text-base text-gray-900">
+                        {formatDate(quizzes.find(q => q.id === location.state.selectedQuizId)?.startDateTime)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 mb-1">Duration</p>
+                      <p className="text-base text-gray-900">{quizzes.find(q => q.id === location.state.selectedQuizId)?.durationMinutes} minutes</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 mb-1">Total Points</p>
+                      <p className="text-base text-gray-900 font-semibold text-primary">{quizzes.find(q => q.id === location.state.selectedQuizId)?.totalPoints} pts</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-600 mb-1">Attempts</p>
+                      <p className="text-base text-gray-900 font-semibold">{quizzes.find(q => q.id === location.state.selectedQuizId)?.attemptCount || 0}</p>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Start Time</p>
-                  <p className="text-base text-gray-900">
-                    {formatDate(quizzes.find(q => q.id === location.state.selectedQuizId)?.startDateTime)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Duration</p>
-                  <p className="text-base text-gray-900">{quizzes.find(q => q.id === location.state.selectedQuizId)?.durationMinutes} minutes</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Total Points</p>
-                  <p className="text-base text-gray-900">{quizzes.find(q => q.id === location.state.selectedQuizId)?.totalPoints}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Attempts</p>
-                  <p className="text-base text-gray-900">{quizzes.find(q => q.id === location.state.selectedQuizId)?.attemptCount || 0}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-500">Description</p>
-                  <p className="text-base text-gray-900">{quizzes.find(q => q.id === location.state.selectedQuizId)?.description}</p>
-                </div>
+
+                {quizzes.find(q => q.id === location.state.selectedQuizId)?.description && (
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">Description</h3>
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      {quizzes.find(q => q.id === location.state.selectedQuizId)?.description}
+                    </p>
+                  </div>
+                )}
               </div>
 
-              <div className="mt-6 space-y-3">
+              <div className="mt-8 space-y-3">
                 <button
                   onClick={() => handleDelete(location.state.selectedQuizId)}
                   className="w-full px-4 py-2 border border-red-600 text-red-600 rounded-md hover:bg-red-50"
@@ -268,8 +297,14 @@ function QuizListFaculty() {
               </div>
             </div>
           ) : (
-            <div className="bg-white rounded-lg shadow p-6 text-center">
-              <p className="text-gray-500">Select a quiz to view details</p>
+            <div className="bg-white rounded-xl shadow-lg p-8 text-center border border-gray-100">
+              <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">No Quiz Selected</h3>
+              <p className="text-gray-600">Click on a quiz from the list to view its details and manage options</p>
             </div>
           )}
         </div>
