@@ -6,8 +6,7 @@ export const login = async (email, password, role) => {
   if (role === 'SUPERADMIN') {
     return axios.post(`${API}/api/admin/login`, {
       email,
-      password,
-      role
+      password
     });
   } else {
     return axios.post(`${API}/api/users/login`, {
