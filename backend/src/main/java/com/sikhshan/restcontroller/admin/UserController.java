@@ -21,6 +21,9 @@ public class UserController {
 
     @PostMapping("/create")
     public ResponseEntity<?> createUser(@RequestBody User user) {
+        System.out.println("Received user data: " + user);
+        System.out.println("User role: " + user.getRole());
+        
         // Check if user with the same email already exists
         if (userRepository.findByEmail(user.getEmail()).isPresent()) {
             return ResponseEntity.badRequest().body("User with this email already exists");

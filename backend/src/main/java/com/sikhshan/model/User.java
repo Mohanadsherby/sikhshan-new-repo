@@ -169,4 +169,15 @@ public class User {
     public void setCloudinaryUrl(String cloudinaryUrl) {
         this.cloudinaryUrl = cloudinaryUrl;
     }
+    
+    @Override
+    public String toString() {
+        return "User{" +
+                "id=" + id +
+                ", email='" + email + '\'' +
+                ", name='" + name + '\'' +
+                ", role=" + role +
+                ", createdAt=" + createdAt +
+                '}';
+    }
 }
