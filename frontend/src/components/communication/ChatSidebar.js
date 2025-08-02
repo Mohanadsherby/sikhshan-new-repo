@@ -99,15 +99,7 @@ const ChatSidebar = ({ currentUserId, selectedChatRoom, onChatRoomSelect }) => {
                                             </p>
                                         )}
 
-                                        {/* Online Status */}
-                                        <div className="flex items-center mt-0.5">
-                                            <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                                                otherUser.isOnline ? 'bg-green-500' : 'bg-gray-400'
-                                            }`}></div>
-                                            <span className="text-xs text-gray-500">
-                                                {otherUser.isOnline ? 'Online' : 'Offline'}
-                                            </span>
-                                        </div>
+
                                     </div>
                                 </div>
                             </div>

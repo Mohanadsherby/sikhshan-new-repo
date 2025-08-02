@@ -167,14 +167,6 @@ const ChatWindow = ({ chatRoom, currentUser, onBack }) => {
                             <h2 className="text-sm font-semibold text-gray-800">
                                 {getDisplayName(otherUser)}
                             </h2>
-                            <div className="flex items-center">
-                                <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
-                                    otherUser.isOnline ? 'bg-green-500' : 'bg-gray-400'
-                                }`}></div>
-                                <span className="text-xs text-gray-500">
-                                    {otherUser.isOnline ? 'Online' : 'Offline'}
-                                </span>
-                            </div>
                         </div>
                     </div>
                 </div>

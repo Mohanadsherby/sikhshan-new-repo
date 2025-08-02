@@ -165,9 +165,6 @@ const UserCard = ({ user, onClick }) => {
                 <p className="text-xs text-gray-500 truncate">{user.email}</p>
                 <div className="flex items-center mt-0.5">
                     <span className="text-xs text-gray-500">{getUserRoleDisplay(user.role)}</span>
-                    <div className={`w-1.5 h-1.5 rounded-full ml-1.5 ${
-                        user.isOnline ? 'bg-green-500' : 'bg-gray-400'
-                    }`}></div>
                 </div>
             </div>
         </div>
