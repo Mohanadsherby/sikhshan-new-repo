@@ -1,7 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "../../contexts/AuthContext"
+import { 
+  getEventsByMonthAndYear, 
+  createEvent, 
+  updateEvent, 
+  deleteEvent,
+  convertEventType,
+  convertToBackendEventType,
+  formatDateForAPI,
+  formatTimeForAPI,
+  formatTimeForDisplay
+} from "../../api/eventApi"
 
 function Calendar() {
   const { currentUser } = useAuth()
@@ -16,39 +27,36 @@ function Calendar() {
     type: "assignment",
   })
 
-  // Mock events data
-  const [events, setEvents] = useState([
-    {
-      id: 1,
-      title: "CS101 Assignment Due",
-      description: "Submit Programming Basics assignment",
-      date: new Date(2023, 4, 15), // May 15, 2023
-      startTime: "23:59",
-      endTime: "23:59",
-      type: "assignment",
-    },
-    {
-      id: 2,
-      title: "CS201 Midterm Exam",
-      description: "Covers chapters 1-5",
-      date: new Date(2023, 4, 20), // May 20, 2023
-      startTime: "14:00",
-      endTime: "16:00",
-      type: "exam",
-    },
-    {
-      id: 3,
-      title: "Study Group Meeting",
-      description: "Prepare for CS101 final exam",
-      date: new Date(2023, 4, 18), // May 18, 2023
-      startTime: "15:00",
-      endTime: "17:00",
-      type: "meeting",
-    },
-  ])
+  // Events data from backend
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   // Remove add event functionality for students
   const isStudent = currentUser?.role === "STUDENT"
+
+  // Fetch events for current month
+  useEffect(() => {
+    const fetchEvents = async () => {
+      if (!currentUser) return
+      
+      setLoading(true)
+      setError(null)
+      try {
+        const year = currentDate.getFullYear()
+        const month = currentDate.getMonth() + 1 // JavaScript months are 0-indexed
+        const response = await getEventsByMonthAndYear(year, month)
+        setEvents(response.data)
+      } catch (err) {
+        console.error('Error fetching events:', err)
+        setError('Failed to load events')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchEvents()
+  }, [currentDate, currentUser])
 
   // Get days in month
   const getDaysInMonth = (year, month) => {
@@ -80,7 +88,10 @@ function Calendar() {
       const date = new Date(year, month, day)
       const isToday = isSameDay(date, new Date())
       const isSelected = isSameDay(date, selectedDate)
-      const dayEvents = events.filter((event) => isSameDay(event.date, date))
+      const dayEvents = events.filter((event) => {
+        const eventDate = new Date(event.eventDate)
+        return isSameDay(eventDate, date)
+      })
 
       days.push({
         day,
@@ -144,21 +155,36 @@ function Calendar() {
   }
 
   // Add new event
-  const handleAddEvent = (e) => {
+  const handleAddEvent = async (e) => {
     e.preventDefault()
 
-    const newEvent = {
-      id: Date.now(),
-      title: eventForm.title,
-      description: eventForm.description,
-      date: selectedDate,
-      startTime: eventForm.startTime,
-      endTime: eventForm.endTime,
-      type: eventForm.type,
-    }
+    setLoading(true)
+    setError(null)
+    try {
+      const eventData = {
+        title: eventForm.title,
+        description: eventForm.description,
+        eventDate: formatDateForAPI(selectedDate),
+        startTime: formatTimeForAPI(eventForm.startTime),
+        endTime: formatTimeForAPI(eventForm.endTime),
+        type: convertToBackendEventType(eventForm.type)
+      }
 
-    setEvents([...events, newEvent])
-    toggleEventForm()
+      const response = await createEvent(eventData)
+      
+      // Refresh events for the current month
+      const year = currentDate.getFullYear()
+      const month = currentDate.getMonth() + 1
+      const eventsResponse = await getEventsByMonthAndYear(year, month)
+      setEvents(eventsResponse.data)
+      
+      toggleEventForm()
+    } catch (err) {
+      console.error('Error creating event:', err)
+      setError('Failed to create event')
+    } finally {
+      setLoading(false)
+    }
   }
 
   // Format date for display
@@ -171,8 +197,35 @@ function Calendar() {
     })
   }
 
+  // Delete event
+  const handleDeleteEvent = async (eventId) => {
+    if (!window.confirm('Are you sure you want to delete this event?')) {
+      return
+    }
+
+    setLoading(true)
+    setError(null)
+    try {
+      await deleteEvent(eventId)
+      
+      // Refresh events for the current month
+      const year = currentDate.getFullYear()
+      const month = currentDate.getMonth() + 1
+      const eventsResponse = await getEventsByMonthAndYear(year, month)
+      setEvents(eventsResponse.data)
+    } catch (err) {
+      console.error('Error deleting event:', err)
+      setError('Failed to delete event')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Get events for selected date
-  const selectedDateEvents = events.filter((event) => isSameDay(event.date, selectedDate))
+  const selectedDateEvents = events.filter((event) => {
+    const eventDate = new Date(event.eventDate)
+    return isSameDay(eventDate, selectedDate)
+  })
 
   // Get month and year for display
   const monthYear = currentDate.toLocaleDateString("en-US", {
@@ -189,13 +242,19 @@ function Calendar() {
   const calendarContent = (
     <div className="container mx-auto px-4 py-6">
       <h1 className="text-3xl font-bold text-gray-800 mb-6">Academic Calendar</h1>
+      
+      {error && (
+        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          {error}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar */}
         <div className="lg:col-span-2 bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-800">{monthYear}</h2>
-            <div className="flex space-x-2">
+            <div className="flex items-center space-x-2">
               <button onClick={goToPreviousMonth} className="p-2 rounded-md hover:bg-gray-100">
                 <svg className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -206,6 +265,14 @@ function Calendar() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
+              {loading && (
+                <div className="ml-2">
+                  <svg className="animate-spin h-5 w-5 text-gray-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+              )}
             </div>
           </div>
 
@@ -239,9 +306,9 @@ function Calendar() {
                           <div
                             key={event.id}
                             className={`text-xs truncate px-1 py-0.5 rounded ${
-                              event.type === "assignment"
+                              convertEventType(event.type) === "assignment"
                                 ? "bg-primary-100 text-primary-800"
-                                : event.type === "exam"
+                                : convertEventType(event.type) === "exam"
                                   ? "bg-red-100 text-red-800"
                                   : "bg-green-100 text-green-800"
                             }`}
@@ -351,14 +418,16 @@ function Calendar() {
                   <option value="assignment">Assignment</option>
                   <option value="exam">Exam</option>
                   <option value="meeting">Meeting</option>
+                  <option value="other">Other</option>
                 </select>
               </div>
 
               <button
                 type="submit"
-                className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+                disabled={loading}
+                className="w-full px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Add Event
+                {loading ? 'Adding Event...' : 'Add Event'}
               </button>
             </form>
           )}
@@ -370,22 +439,35 @@ function Calendar() {
                   {selectedDateEvents.map((event) => (
                     <div key={event.id} className="border border-gray-200 rounded-md p-3">
                       <div className="flex justify-between items-start">
-                        <h3 className="text-sm font-medium text-gray-800">{event.title}</h3>
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full ${
-                            event.type === "assignment"
-                              ? "bg-primary-100 text-primary-800"
-                              : event.type === "exam"
-                                ? "bg-red-100 text-red-800"
-                                : "bg-green-100 text-green-800"
-                          }`}
-                        >
-                          {event.type.charAt(0).toUpperCase() + event.type.slice(1)}
-                        </span>
+                        <div className="flex-1">
+                          <h3 className="text-sm font-medium text-gray-800">{event.title}</h3>
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full ${
+                              convertEventType(event.type) === "assignment"
+                                ? "bg-primary-100 text-primary-800"
+                                : convertEventType(event.type) === "exam"
+                                  ? "bg-red-100 text-red-800"
+                                  : "bg-green-100 text-green-800"
+                            }`}
+                          >
+                            {convertEventType(event.type).charAt(0).toUpperCase() + convertEventType(event.type).slice(1)}
+                          </span>
+                        </div>
+                        {!isStudent && event.createdBy?.id === currentUser?.id && (
+                          <button
+                            onClick={() => handleDeleteEvent(event.id)}
+                            className="ml-2 text-red-600 hover:text-red-800"
+                            disabled={loading}
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                       <p className="text-xs text-gray-500 mt-1">{event.description}</p>
                       <p className="text-xs text-gray-500 mt-2">
-                        {event.startTime} - {event.endTime}
+                        {formatTimeForDisplay(event.startTime)} - {formatTimeForDisplay(event.endTime)}
                       </p>
                     </div>
                   ))}
