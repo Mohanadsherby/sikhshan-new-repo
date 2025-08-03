@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { getCourseById, unenrollFromCourse, getCourseAttachments, downloadCourseAttachment, getChaptersByCourse } from "../../api/courseApi";
+import CourseGrades from "../../components/grades/CourseGrades";
 
 // Helper to format date
 const formatDate = (dateStr) => {
@@ -63,6 +64,7 @@ function CourseDetailStudent() {
   const [unenrolling, setUnenrolling] = useState(false);
   const [showUnenrollModal, setShowUnenrollModal] = useState(false);
 
+
   useEffect(() => {
     const fetchCourseData = async () => {
       setLoading(true);
@@ -85,6 +87,8 @@ function CourseDetailStudent() {
         } catch (err) {
           console.error("Error fetching chapters:", err);
         }
+
+
       } catch (err) {
         setError("Failed to load course details.");
         console.error("Error fetching course:", err);
@@ -342,6 +346,100 @@ function CourseDetailStudent() {
     </div>
   );
 
+  const renderGrades = () => (
+    <div className="bg-white rounded-lg shadow p-6">
+      <h3 className="text-lg font-semibold text-gray-800 mb-6">Your Grades</h3>
+      
+      {gradeLoading ? (
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="text-gray-500 mt-2">Loading grades...</p>
+        </div>
+      ) : courseGrade ? (
+        <div className="space-y-6">
+          {/* Overall Grade Summary */}
+          <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-blue-600">{courseGrade.finalPercentage?.toFixed(1) || 0}%</p>
+                <p className="text-sm text-gray-600">Final Grade</p>
+              </div>
+              <div className="text-center">
+                <p className={`text-2xl font-bold ${courseGrade.letterGrade ? 'text-green-600' : 'text-gray-400'}`}>
+                  {courseGrade.letterGrade || 'N/A'}
+                </p>
+                <p className="text-sm text-gray-600">Letter Grade</p>
+              </div>
+              <div className="text-center">
+                <p className={`text-2xl font-bold ${courseGrade.gradePoint ? 'text-purple-600' : 'text-gray-400'}`}>
+                  {courseGrade.gradePoint?.toFixed(1) || 'N/A'}
+                </p>
+                <p className="text-sm text-gray-600">Grade Point</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-orange-600">{courseGrade.performanceDescription || 'N/A'}</p>
+                <p className="text-sm text-gray-600">Performance</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Assignment Grades */}
+          <div>
+            <h4 className="text-lg font-medium text-gray-800 mb-4">Assignment Grades</h4>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="text-center">
+                  <p className="text-xl font-bold text-blue-600">{courseGrade.assignmentCount || 0}</p>
+                  <p className="text-sm text-gray-600">Total Assignments</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold text-green-600">{courseGrade.assignmentPercentage?.toFixed(1) || 0}%</p>
+                  <p className="text-sm text-gray-600">Assignment Average</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold text-purple-600">{courseGrade.assignmentWeight || 60}%</p>
+                  <p className="text-sm text-gray-600">Weight in Final Grade</p>
+                </div>
+              </div>
+              <div className="text-sm text-gray-600">
+                <p>Points Earned: {courseGrade.assignmentPointsEarned || 0} / {courseGrade.assignmentTotalPoints || 0}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quiz Grades */}
+          <div>
+            <h4 className="text-lg font-medium text-gray-800 mb-4">Quiz Grades</h4>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="text-center">
+                  <p className="text-xl font-bold text-blue-600">{courseGrade.quizCount || 0}</p>
+                  <p className="text-sm text-gray-600">Total Quizzes</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold text-green-600">{courseGrade.quizPercentage?.toFixed(1) || 0}%</p>
+                  <p className="text-sm text-gray-600">Quiz Average</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xl font-bold text-purple-600">{courseGrade.quizWeight || 40}%</p>
+                  <p className="text-sm text-gray-600">Weight in Final Grade</p>
+                </div>
+              </div>
+              <div className="text-sm text-gray-600">
+                <p>Points Earned: {courseGrade.quizPointsEarned || 0} / {courseGrade.quizTotalPoints || 0}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center py-8 text-gray-500">
+          <p>No grades available yet.</p>
+          <p className="text-sm mt-2">Your grades will appear here once assignments and quizzes are graded.</p>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="container mx-auto px-4 py-6">
       {/* Header */}
@@ -389,7 +487,8 @@ function CourseDetailStudent() {
           {[
             { id: 'overview', label: 'Overview' },
             { id: 'materials', label: 'Materials' },
-            { id: 'progress', label: 'Progress' }
+            { id: 'progress', label: 'Progress' },
+            { id: 'grades', label: 'Grades' }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -410,6 +509,7 @@ function CourseDetailStudent() {
       {activeTab === 'overview' && renderOverview()}
       {activeTab === 'materials' && renderMaterials()}
       {activeTab === 'progress' && renderProgress()}
+      {activeTab === 'grades' && <CourseGrades courseId={courseId} isFaculty={false} />}
 
       {/* Unenroll Confirmation Modal */}
       {showUnenrollModal && (
