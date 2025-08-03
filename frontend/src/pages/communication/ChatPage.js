@@ -59,7 +59,7 @@ const ChatPage = () => {
     }
 
     return (
-        <div className="h-screen w-full flex bg-gray-50 overflow-hidden">
+        <div className="h-[calc(100vh-100px)] w-full flex bg-gray-50 overflow-hidden">
             {/* Sidebar - Responsive width */}
             <div className={`${selectedChatRoom ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-72 bg-white border-r border-gray-200 flex-col overflow-hidden`}>
                 {/* Header */}
