@@ -93,6 +93,7 @@ function Sidebar() {
       settings: faCog,
       reports: faChartBar,
       logs: faHistory,
+
     }
 
     return <FontAwesomeIcon icon={iconMap[name] || faFileAlt} className="mr-3 w-5 h-5" />

@@ -2,51 +2,22 @@
 import { Link } from "react-router-dom"
 import { useAuth } from "../../contexts/AuthContext"
 import { useState, useEffect } from "react"
-
-// Mock data
-const enrolledCourses = [
-  {
-    id: 1,
-    name: "Introduction to Computer Science",
-    code: "CS101",
-    instructor: "Dr. Smith",
-    progress: 75,
-    image:
-      "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-  },
-  {
-    id: 2,
-    name: "Data Structures and Algorithms",
-    code: "CS201",
-    instructor: "Dr. Johnson",
-    progress: 45,
-    image:
-      "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-  },
-  {
-    id: 3,
-    name: "Database Management Systems",
-    code: "CS301",
-    instructor: "Prof. Williams",
-    progress: 60,
-    image: "https://images.unsplash.com/photo-1558494949-ef010cbdcc31?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-  },
-]
-
-const upcomingAssignments = [
-  { id: 1, title: "CS101 Assignment 3", course: "CS101", due: "2 days", status: "Not Started" },
-  { id: 2, title: "CS201 Project Proposal", course: "CS201", due: "1 week", status: "In Progress" },
-  { id: 3, title: "CS301 Database Design", course: "CS301", due: "3 days", status: "Not Started" },
-]
-
-const upcomingQuizzes = [
-  { id: 1, title: "CS101 Quiz 2", course: "CS101", date: "May 15, 2023", time: "10:00 AM" },
-  { id: 2, title: "CS201 Midterm", course: "CS201", date: "May 20, 2023", time: "2:00 PM" },
-]
+import { getCoursesByStudent } from "../../api/courseApi"
+import { getSubmissionsByStudent, getActiveAssignmentsByCourse } from "../../api/assignmentApi"
+import { getActiveQuizzesByCourse } from "../../api/quizApi"
 
 function StudentDashboard() {
   const { currentUser } = useAuth()
   const [greeting, setGreeting] = useState("")
+  const [enrolledCourses, setEnrolledCourses] = useState([])
+  const [upcomingAssignments, setUpcomingAssignments] = useState([])
+  const [upcomingQuizzes, setUpcomingQuizzes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    enrolledCourses: 0,
+    assignmentsDue: 0,
+    upcomingQuizzes: 0
+  })
 
   // Set greeting based on time of day
   useEffect(() => {
@@ -56,9 +27,131 @@ function StudentDashboard() {
     else setGreeting("Good evening")
   }, [])
 
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!currentUser?.id) return
+      
+      try {
+        setLoading(true)
+        
+        // Fetch enrolled courses
+        const coursesResponse = await getCoursesByStudent(currentUser.id)
+        const courses = coursesResponse.data || []
+        setEnrolledCourses(courses)
+        
+        // Fetch upcoming assignments from all enrolled courses
+        const allAssignments = []
+        for (const course of courses) {
+          try {
+            const assignmentsResponse = await getActiveAssignmentsByCourse(course.id)
+            const courseAssignments = assignmentsResponse.data || []
+            allAssignments.push(...courseAssignments.map(assignment => ({
+              ...assignment,
+              courseName: course.name,
+              courseCode: course.code
+            })))
+          } catch (error) {
+            console.error(`Error fetching assignments for course ${course.id}:`, error)
+          }
+        }
+        
+        // Sort assignments by due date and take the next 5
+        const sortedAssignments = allAssignments
+          .filter(assignment => new Date(assignment.dueDate) > new Date())
+          .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+          .slice(0, 5)
+        
+        setUpcomingAssignments(sortedAssignments)
+        
+        // Fetch upcoming quizzes from all enrolled courses
+        const allQuizzes = []
+        for (const course of courses) {
+          try {
+            const quizzesResponse = await getActiveQuizzesByCourse(course.id)
+            const courseQuizzes = quizzesResponse.data || []
+            allQuizzes.push(...courseQuizzes.map(quiz => ({
+              ...quiz,
+              courseName: course.name,
+              courseCode: course.code
+            })))
+          } catch (error) {
+            console.error(`Error fetching quizzes for course ${course.id}:`, error)
+          }
+        }
+        
+        // Sort quizzes by start date and take the next 5
+        const sortedQuizzes = allQuizzes
+          .filter(quiz => new Date(quiz.startTime) > new Date())
+          .sort((a, b) => new Date(a.startTime) - new Date(b.startTime))
+          .slice(0, 5)
+        
+        setUpcomingQuizzes(sortedQuizzes)
+        
+        // Update stats
+        setStats({
+          enrolledCourses: courses.length,
+          assignmentsDue: sortedAssignments.length,
+          upcomingQuizzes: sortedQuizzes.length
+        })
+        
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchDashboardData()
+  }, [currentUser?.id])
+
+  // Helper function to format due date
+  const formatDueDate = (dueDate) => {
+    const now = new Date()
+    const due = new Date(dueDate)
+    const diffTime = due - now
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+    
+    if (diffDays < 0) return 'Overdue'
+    if (diffDays === 0) return 'Due today'
+    if (diffDays === 1) return 'Due tomorrow'
+    if (diffDays < 7) return `Due in ${diffDays} days`
+    if (diffDays < 30) return `Due in ${Math.ceil(diffDays / 7)} weeks`
+    return `Due in ${Math.ceil(diffDays / 30)} months`
+  }
+
+  // Helper function to format quiz date
+  const formatQuizDate = (startTime) => {
+    const date = new Date(startTime)
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  }
+
+  // Helper function to format quiz time
+  const formatQuizTime = (startTime) => {
+    const date = new Date(startTime)
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
   // Redirect if not student
   if (currentUser?.role !== "STUDENT") {
     return <div className="text-center p-8">You don't have permission to view this page.</div>
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -89,7 +182,7 @@ function StudentDashboard() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-primary">
           <div className="flex items-center">
             <div className="p-3 rounded-full bg-primary bg-opacity-10 text-primary">
@@ -110,7 +203,7 @@ function StudentDashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Enrolled Courses</p>
-              <p className="text-3xl font-bold text-gray-900">3</p>
+              <p className="text-3xl font-bold text-gray-900">{stats.enrolledCourses}</p>
             </div>
           </div>
         </div>
@@ -134,7 +227,7 @@ function StudentDashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Assignments Due</p>
-              <p className="text-3xl font-bold text-gray-900">5</p>
+              <p className="text-3xl font-bold text-gray-900">{stats.assignmentsDue}</p>
             </div>
           </div>
         </div>
@@ -158,31 +251,7 @@ function StudentDashboard() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Upcoming Quizzes</p>
-              <p className="text-3xl font-bold text-gray-900">2</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-green-500">
-          <div className="flex items-center">
-            <div className="p-3 rounded-full bg-green-500 bg-opacity-10 text-green-500">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-8 w-8"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Overall GPA</p>
-              <p className="text-3xl font-bold text-gray-900">3.7</p>
+              <p className="text-3xl font-bold text-gray-900">{stats.upcomingQuizzes}</p>
             </div>
           </div>
         </div>
@@ -191,42 +260,49 @@ function StudentDashboard() {
       {/* Enrolled Courses */}
       <h2 className="text-2xl font-bold text-gray-800 mb-4">My Courses</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-        {enrolledCourses.map((course) => (
-          <div
-            key={course.id}
-            className="bg-white rounded-xl shadow-md overflow-hidden transition-transform duration-300 hover:shadow-lg hover:-translate-y-1"
-          >
-            <div className="h-40 bg-cover bg-center" style={{ backgroundImage: `url(${course.image})` }}>
-              <div className="h-full w-full bg-black bg-opacity-30 flex items-end p-4">
-                <div>
-                  <h3 className="text-lg font-bold text-white mb-1">{course.name}</h3>
-                  <p className="text-sm text-white text-opacity-80">{course.code}</p>
-                  <p className="text-sm text-white mt-2">Total Grade: <span className="font-semibold">{course.progress}%</span></p>
+        {enrolledCourses.length > 0 ? (
+          enrolledCourses.map((course) => (
+            <div
+              key={course.id}
+              className="bg-white rounded-xl shadow-md overflow-hidden transition-transform duration-300 hover:shadow-lg hover:-translate-y-1"
+            >
+              <div className="h-40 bg-cover bg-center" style={{ 
+                backgroundImage: course.imageUrl 
+                  ? `url(${course.imageUrl})` 
+                  : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+              }}>
+                <div className="h-full w-full bg-black bg-opacity-30 flex items-end p-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-white mb-1">{course.name}</h3>
+                    <p className="text-sm text-white text-opacity-80">{course.code}</p>
+                                         <p className="text-sm text-white mt-2">Instructor: <span className="font-semibold">{course.instructor || 'N/A'}</span></p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-4">
+                                 <p className="text-sm text-gray-600">Instructor: {course.instructor || 'N/A'}</p>
+                <div className="mt-4">
+                  <Link
+                    to={`/student/courses/${course.id}`}
+                    className="block w-full text-center py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors duration-200"
+                  >
+                    View Course
+                  </Link>
                 </div>
               </div>
             </div>
-            <div className="p-4">
-              <p className="text-sm text-gray-600">Instructor: {course.instructor}</p>
-              <div className="mt-4">
-                <div className="flex justify-between text-sm text-gray-600 mb-1">
-                  <span>Progress</span>
-                  <span>{course.progress}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div className="bg-primary h-2 rounded-full" style={{ width: `${course.progress}%` }}></div>
-                </div>
-              </div>
-              <div className="mt-4">
-                <Link
-                  to={`/student/courses/${course.id}`}
-                  className="block w-full text-center py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors duration-200"
-                >
-                  View Course
-                </Link>
-              </div>
-            </div>
+          ))
+        ) : (
+          <div className="col-span-full text-center py-8">
+            <p className="text-gray-500">No courses enrolled yet.</p>
+            <Link
+              to="/student/courses"
+              className="mt-2 inline-block px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors duration-200"
+            >
+              Browse Courses
+            </Link>
           </div>
-        ))}
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -242,29 +318,25 @@ function StudentDashboard() {
             </Link>
           </div>
           <div className="space-y-4">
-            {upcomingAssignments.map((assignment) => (
-              <div key={assignment.id} className="border-b border-gray-200 pb-4">
-                <div className="flex justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{assignment.title}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {assignment.course} • Due in {assignment.due}
-                    </p>
+            {upcomingAssignments.length > 0 ? (
+              upcomingAssignments.map((assignment) => (
+                <div key={assignment.id} className="border-b border-gray-200 pb-4">
+                  <div className="flex justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{assignment.title}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {assignment.courseCode} • {formatDueDate(assignment.dueDate)}
+                      </p>
+                    </div>
+                    <span className="text-xs px-2 py-1 rounded-full flex items-center justify-center bg-yellow-100 text-yellow-800">
+                      Active
+                    </span>
                   </div>
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full flex items-center justify-center ${
-                      assignment.status === "Not Started"
-                        ? "bg-red-100 text-red-800"
-                        : assignment.status === "In Progress"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : "bg-green-100 text-green-800"
-                    }`}
-                  >
-                    {assignment.status}
-                  </span>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-gray-500 text-sm">No upcoming assignments.</p>
+            )}
           </div>
         </div>
 
@@ -280,49 +352,24 @@ function StudentDashboard() {
             </Link>
           </div>
           <div className="space-y-4">
-            {upcomingQuizzes.map((quiz) => (
-              <div key={quiz.id} className="border-b border-gray-200 pb-4">
-                <p className="text-sm font-medium text-gray-900">{quiz.title}</p>
-                <p className="text-xs text-gray-500 mt-1">{quiz.course}</p>
-                <div className="flex items-center mt-2">
-                  <span className="text-xs bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-full mr-2">
-                    {quiz.date}
-                  </span>
-                  <span className="text-xs bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-full">
-                    {quiz.time}
-                  </span>
+            {upcomingQuizzes.length > 0 ? (
+              upcomingQuizzes.map((quiz) => (
+                <div key={quiz.id} className="border-b border-gray-200 pb-4">
+                  <p className="text-sm font-medium text-gray-900">{quiz.title}</p>
+                  <p className="text-xs text-gray-500 mt-1">{quiz.courseCode}</p>
+                  <div className="flex items-center mt-2">
+                    <span className="text-xs bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-full mr-2">
+                      {formatQuizDate(quiz.startTime)}
+                    </span>
+                    <span className="text-xs bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-full">
+                      {formatQuizTime(quiz.startTime)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Feedback */}
-      <h2 className="text-2xl font-bold text-gray-800 mt-8 mb-4">Recent Feedback & Results</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-green-500">
-          <div className="flex justify-between">
-            <div>
-              <h3 className="font-medium text-gray-800">CS101 Assignment 2</h3>
-              <p className="text-sm text-gray-500 mt-1">Submitted on May 1, 2023</p>
-            </div>
-            <span className="text-lg font-bold text-green-600">92%</span>
-          </div>
-          <div className="mt-4 p-3 bg-green-50 rounded-md text-sm text-gray-700 border-l-2 border-green-300">
-            "Excellent work! Your implementation was very efficient and well-documented."
-          </div>
-        </div>
-        <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-yellow-500">
-          <div className="flex justify-between">
-            <div>
-              <h3 className="font-medium text-gray-800">CS201 Quiz 1</h3>
-              <p className="text-sm text-gray-500 mt-1">Completed on April 28, 2023</p>
-            </div>
-            <span className="text-lg font-bold text-yellow-600">78%</span>
-          </div>
-          <div className="mt-4 p-3 bg-yellow-50 rounded-md text-sm text-gray-700 border-l-2 border-yellow-300">
-            "Good understanding of basic concepts. Review section 3.4 for improvement."
+              ))
+            ) : (
+              <p className="text-gray-500 text-sm">No upcoming quizzes.</p>
+            )}
           </div>
         </div>
       </div>

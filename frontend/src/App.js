@@ -123,11 +123,11 @@ function App() {
             <Route path="quizzes/:quizId" element={<QuizDetailFaculty />} />
             <Route path="quizzes/:quizId/edit" element={<QuizEditFaculty />} />
             <Route path="quizzes/:quizId/view" element={<FacultyQuizView />} />
-            <Route path="quizzes/:quizId/grade/:attemptId" element={<FacultyQuizGrade />} />
-            <Route path="chat" element={<ChatWrapper />} />
-            <Route path="calendar" element={<Calendar />} />
-            <Route path="profile" element={<Profile />} />
-          </Route>
+                    <Route path="quizzes/:quizId/grade/:attemptId" element={<FacultyQuizGrade />} />
+        <Route path="chat" element={<ChatWrapper />} />
+        <Route path="calendar" element={<Calendar />} />
+        <Route path="profile" element={<Profile />} />
+      </Route>
 
           {/* Admin Routes (superadmin only) */}
           <Route path="/admin" element={
@@ -170,10 +170,10 @@ function App() {
             <Route path="quizzes/:quizId/result" element={<QuizResultStudent />} />
             <Route path="profile" element={<Profile />} />
             <Route path="notifications" element={<AllNotifications />} />
-            <Route path="plagiarism" element={<PlagiarismResults />} />
-            <Route path="chat" element={<ChatWrapper />} />
-            <Route path="calendar" element={<Calendar />} />
-          </Route>
+                    <Route path="plagiarism" element={<PlagiarismResults />} />
+        <Route path="chat" element={<ChatWrapper />} />
+        <Route path="calendar" element={<Calendar />} />
+      </Route>
 
           {/* Common Routes (all roles) */}
           {/* <Route path="/chat" element={<Chat />} />

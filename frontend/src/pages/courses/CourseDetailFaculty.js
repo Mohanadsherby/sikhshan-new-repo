@@ -15,6 +15,7 @@ import {
   deleteChapter,
   uploadAttachmentToChapter
 } from "../../api/courseApi";
+import CourseGrades from "../../components/grades/CourseGrades";
 
 // Helper to format date
 const formatDate = (dateStr) => {
@@ -758,7 +759,8 @@ function CourseDetailFaculty() {
           {[
             { id: 'overview', label: 'Overview' },
             { id: 'materials', label: 'Materials' },
-            { id: 'students', label: 'Students' }
+            { id: 'students', label: 'Students' },
+            { id: 'grades', label: 'Grades' }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -779,6 +781,7 @@ function CourseDetailFaculty() {
       {activeTab === 'overview' && renderOverview()}
       {activeTab === 'materials' && renderMaterials()}
       {activeTab === 'students' && renderStudents()}
+      {activeTab === 'grades' && <CourseGrades courseId={courseId} isFaculty={true} />}
     </div>
   );
 }
