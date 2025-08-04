@@ -4,6 +4,9 @@ import React, { useState, useCallback } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "../../contexts/AuthContext"
 import logo from "../../assets/images/logo.png"
+// Add a background image import or path
+import bgImage from "../../assets/images/login_bg.webp"; // Update the path as needed
+const backgroundImage = bgImage;
 
 function Login() {
   const [email, setEmail] = useState("")
@@ -235,7 +238,7 @@ function Login() {
         className="hidden md:block md:w-1/2 bg-cover bg-center"
         style={{
           backgroundImage:
-            "url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80')",
+            `url(${backgroundImage})`,
         }}
       >
         <div className="h-full w-full bg-black bg-opacity-50 flex items-center justify-center">
