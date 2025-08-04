@@ -306,47 +306,47 @@ function FacultyDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {courses.length > 0 ? (
               courses.map((course) => (
-                <div
-                  key={course.id}
-                  className="bg-white rounded-xl shadow-md overflow-hidden transition-transform duration-300 hover:shadow-lg hover:-translate-y-1"
-                >
+              <div
+                key={course.id}
+                className="bg-white rounded-xl shadow-md overflow-hidden transition-transform duration-300 hover:shadow-lg hover:-translate-y-1"
+              >
                   <div className="h-32 bg-cover bg-center" style={{ 
                     backgroundImage: course.imageUrl 
                       ? `url(${course.imageUrl})` 
                       : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
                   }}>
-                    <div className="h-full w-full bg-black bg-opacity-30 flex items-end p-4">
-                      <div>
-                        <span className="inline-block bg-primary text-white text-xs px-2 py-1 rounded-md mb-2">
-                          {course.code}
-                        </span>
-                        <h3 className="text-lg font-bold text-white">{course.name}</h3>
-                      </div>
-                    </div>
-                  </div>
-                                     <div className="p-4">
-                     <div className="flex justify-between items-center mb-2">
-                       <p className="text-sm text-gray-600">{course.enrollmentCount || 0} Students</p>
-                       <span className="text-xs bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-full">
-                         {course.status || 'Active'}
-                       </span>
-                     </div>
-                    <div className="flex space-x-2">
-                      <Link
-                        to={`/faculty/courses/${course.id}`}
-                        className="flex-1 text-center py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors duration-200"
-                      >
-                        Manage
-                      </Link>
-                      <Link
-                        to={`/faculty/courses/${course.id}/students`}
-                        className="flex-1 text-center py-2 border border-primary text-primary rounded-md hover:bg-primary-light/10 transition-colors duration-200"
-                      >
-                        Students
-                      </Link>
+                  <div className="h-full w-full bg-black bg-opacity-30 flex items-end p-4">
+                    <div>
+                      <span className="inline-block bg-primary text-white text-xs px-2 py-1 rounded-md mb-2">
+                        {course.code}
+                      </span>
+                      <h3 className="text-lg font-bold text-white">{course.name}</h3>
                     </div>
                   </div>
                 </div>
+                <div className="p-4">
+                  <div className="flex justify-between items-center mb-2">
+                       <p className="text-sm text-gray-600">{course.enrollmentCount || 0} Students</p>
+                    <span className="text-xs bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-full">
+                         {course.status || 'Active'}
+                    </span>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Link
+                      to={`/faculty/courses/${course.id}`}
+                      className="flex-1 text-center py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors duration-200"
+                    >
+                      Manage
+                    </Link>
+                    <Link
+                      to={`/faculty/courses/${course.id}/students`}
+                      className="flex-1 text-center py-2 border border-primary text-primary rounded-md hover:bg-primary-light/10 transition-colors duration-200"
+                    >
+                      Students
+                    </Link>
+                  </div>
+                </div>
+              </div>
               ))
             ) : (
               <div className="col-span-full text-center py-8">
@@ -368,23 +368,23 @@ function FacultyDashboard() {
           <div className="space-y-4">
             {upcomingTasks.length > 0 ? (
               upcomingTasks.map((task) => (
-                <div key={task.id} className="border-b border-gray-200 pb-4">
-                  <div className="flex justify-between">
-                    <p className="text-sm font-medium text-gray-900">{task.title}</p>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full ${
-                        task.priority === "High"
-                          ? "bg-red-100 text-red-800"
-                          : task.priority === "Medium"
-                            ? "bg-yellow-100 text-yellow-800"
-                            : "bg-green-100 text-green-800"
-                      }`}
-                    >
-                      {task.priority}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">Due in {task.due}</p>
+              <div key={task.id} className="border-b border-gray-200 pb-4">
+                <div className="flex justify-between">
+                  <p className="text-sm font-medium text-gray-900">{task.title}</p>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full ${
+                      task.priority === "High"
+                        ? "bg-red-100 text-red-800"
+                        : task.priority === "Medium"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-green-100 text-green-800"
+                    }`}
+                  >
+                    {task.priority}
+                  </span>
                 </div>
+                <p className="text-xs text-gray-500 mt-1">Due in {task.due}</p>
+              </div>
               ))
             ) : (
               <p className="text-gray-500 text-sm">No upcoming tasks.</p>
@@ -407,8 +407,8 @@ function FacultyDashboard() {
             <>
               {assignments.slice(0, 3).map((assignment) => (
                 <div key={`assignment-${assignment.id}`} className="flex items-start space-x-4 border-b border-gray-200 pb-4">
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center">
                       A
                     </div>
                   </div>
@@ -428,19 +428,19 @@ function FacultyDashboard() {
                   <div className="flex-shrink-0">
                     <div className="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center">
                       Q
-                    </div>
-                  </div>
-                  <div className="flex-1 min-w-0">
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900">Quiz Created</p>
-                    <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600">
                       {quiz.title} in <span className="text-primary">{quiz.course?.code || 'Course'}</span>
                     </p>
                     <p className="text-xs text-gray-500 mt-1">
                       Starts: {new Date(quiz.startTime).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                </p>
+              </div>
+            </div>
+          ))}
             </>
           ) : (
             <p className="text-gray-500 text-sm">No recent activity.</p>
@@ -488,7 +488,7 @@ function FacultyDashboard() {
               <h3 className="text-lg font-semibold text-gray-800">Create Assignment</h3>
               <p className="text-sm text-gray-600">Create new assignments for students</p>
             </div>
-          </div>
+        </div>
         </Link>
         
         <Link
@@ -499,7 +499,7 @@ function FacultyDashboard() {
             <div className="p-3 rounded-full bg-amber-500 bg-opacity-10 text-amber-500">
               <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+            </svg>
             </div>
             <div className="ml-4">
               <h3 className="text-lg font-semibold text-gray-800">Create Quiz</h3>
