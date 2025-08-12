@@ -170,45 +170,45 @@ function QuizListFaculty() {
                       </div>
                       <div className="space-y-2">
                         <p className="text-gray-600 font-medium">
-                          {quiz.courseName}
-                        </p>
+                      {quiz.courseName}
+                    </p>
                         <p className="text-gray-500">
                           Start: {formatDate(quiz.startDateTime)} • Duration: {quiz.durationMinutes} minutes
-                        </p>
+                    </p>
                         <p className="text-gray-500">
                           Total Points: {quiz.totalPoints} • Attempts: {quiz.attemptCount || 0}
-                        </p>
-                      </div>
+                    </p>
+                  </div>
                     </div>
                                           <div className="flex flex-col sm:flex-row gap-3">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/faculty/quizzes/${quiz.id}/edit`)
-                          }}
-                          className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/faculty/quizzes/${quiz.id}`)
-                          }}
-                          className="px-3 py-1 text-sm bg-primary text-white rounded hover:bg-primary-dark"
-                        >
-                          Details
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/faculty/quizzes/${quiz.id}/view`)
-                          }}
-                          className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
-                        >
-                          Attempts
-                        </button>
-                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/faculty/quizzes/${quiz.id}/edit`)
+                        }}
+                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/faculty/quizzes/${quiz.id}`)
+                        }}
+                        className="px-3 py-1 text-sm bg-primary text-white rounded hover:bg-primary-dark"
+                      >
+                        Details
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate(`/faculty/quizzes/${quiz.id}/view`)
+                        }}
+                        className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
+                      >
+                        Attempts
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -230,28 +230,28 @@ function QuizListFaculty() {
               <div className="space-y-6">
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Quiz Information</h3>
-                  <div className="space-y-4">
-                    <div>
+              <div className="space-y-4">
+                <div>
                       <p className="text-sm font-medium text-gray-600 mb-1">Course</p>
                       <p className="text-base text-gray-900 font-medium">
-                        {quizzes.find(q => q.id === location.state.selectedQuizId)?.courseName}
-                      </p>
-                    </div>
-                    <div>
+                    {quizzes.find(q => q.id === location.state.selectedQuizId)?.courseName}
+                  </p>
+                </div>
+                <div>
                       <p className="text-sm font-medium text-gray-600 mb-1">Start Time</p>
-                      <p className="text-base text-gray-900">
-                        {formatDate(quizzes.find(q => q.id === location.state.selectedQuizId)?.startDateTime)}
-                      </p>
-                    </div>
-                    <div>
+                  <p className="text-base text-gray-900">
+                    {formatDate(quizzes.find(q => q.id === location.state.selectedQuizId)?.startDateTime)}
+                  </p>
+                </div>
+                <div>
                       <p className="text-sm font-medium text-gray-600 mb-1">Duration</p>
-                      <p className="text-base text-gray-900">{quizzes.find(q => q.id === location.state.selectedQuizId)?.durationMinutes} minutes</p>
-                    </div>
-                    <div>
+                  <p className="text-base text-gray-900">{quizzes.find(q => q.id === location.state.selectedQuizId)?.durationMinutes} minutes</p>
+                </div>
+                <div>
                       <p className="text-sm font-medium text-gray-600 mb-1">Total Points</p>
                       <p className="text-base text-gray-900 font-semibold text-primary">{quizzes.find(q => q.id === location.state.selectedQuizId)?.totalPoints} pts</p>
-                    </div>
-                    <div>
+                </div>
+                <div>
                       <p className="text-sm font-medium text-gray-600 mb-1">Attempts</p>
                       <p className="text-base text-gray-900 font-semibold">{quizzes.find(q => q.id === location.state.selectedQuizId)?.attemptCount || 0}</p>
                     </div>
@@ -264,7 +264,7 @@ function QuizListFaculty() {
                     <p className="text-sm text-gray-700 leading-relaxed">
                       {quizzes.find(q => q.id === location.state.selectedQuizId)?.description}
                     </p>
-                  </div>
+                </div>
                 )}
               </div>
 

@@ -4,47 +4,65 @@ const API_BASE_URL = 'http://localhost:8081/api';
 
 // Assignment CRUD operations
 export const createAssignment = async (assignmentData) => {
-    const response = await axios.post(`${API_BASE_URL}/assignments`, assignmentData);
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await axios.post(`${API_BASE_URL}/assignments`, assignmentData, { headers });
     return response;
 };
 
 export const getAllAssignments = async () => {
-    const response = await axios.get(`${API_BASE_URL}/assignments`);
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await axios.get(`${API_BASE_URL}/assignments`, { headers });
     return response;
 };
 
 export const getAssignmentById = async (id) => {
-    const response = await axios.get(`${API_BASE_URL}/assignments/${id}`);
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await axios.get(`${API_BASE_URL}/assignments/${id}`, { headers });
     return response;
 };
 
 export const getAssignmentsByCourse = async (courseId) => {
-    const response = await axios.get(`${API_BASE_URL}/assignments/course/${courseId}`);
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await axios.get(`${API_BASE_URL}/assignments/course/${courseId}`, { headers });
     return response;
 };
 
 export const getActiveAssignmentsByCourse = async (courseId) => {
-    const response = await axios.get(`${API_BASE_URL}/assignments/course/${courseId}/active`);
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await axios.get(`${API_BASE_URL}/assignments/course/${courseId}/active`, { headers });
     return response;
 };
 
 export const getOverdueAssignmentsByCourse = async (courseId) => {
-    const response = await axios.get(`${API_BASE_URL}/assignments/course/${courseId}/overdue`);
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await axios.get(`${API_BASE_URL}/assignments/course/${courseId}/overdue`, { headers });
     return response;
 };
 
 export const getAssignmentsByInstructor = async (instructorId) => {
-    const response = await axios.get(`${API_BASE_URL}/assignments/instructor/${instructorId}`);
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await axios.get(`${API_BASE_URL}/assignments/instructor/${instructorId}`, { headers });
     return response;
 };
 
 export const updateAssignment = async (id, assignmentData) => {
-    const response = await axios.put(`${API_BASE_URL}/assignments/${id}`, assignmentData);
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await axios.put(`${API_BASE_URL}/assignments/${id}`, assignmentData, { headers });
     return response;
 };
 
 export const deleteAssignment = async (id) => {
-    const response = await axios.delete(`${API_BASE_URL}/assignments/${id}`);
+    const token = localStorage.getItem('token');
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const response = await axios.delete(`${API_BASE_URL}/assignments/${id}`, { headers });
     return response;
 };
 

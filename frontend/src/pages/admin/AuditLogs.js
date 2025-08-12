@@ -9,7 +9,43 @@ import {
   faExclamationTriangle,
   faInfoCircle,
   faCheckCircle,
+  faTrash,
+  faChartBar,
+  faClock,
+  faExclamationCircle,
 } from "@fortawesome/free-solid-svg-icons"
+import {
+  getAllAuditLogs,
+  getAuditLogsWithFilters,
+  getLogStatistics,
+  downloadAuditLogs,
+  getStatusColor,
+  getStatusIcon,
+  getActionDisplay,
+  formatTimestamp,
+  formatDuration,
+} from "../../api/auditLogApi"
+
+// Function to create test audit logs
+const createTestAuditLogs = async () => {
+  try {
+    const response = await fetch('http://localhost:8081/api/audit-logs/test/create-sample-logs', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (response.ok) {
+      alert('Test audit logs created successfully!');
+      window.location.reload(); // Refresh the page to show new logs
+    } else {
+      alert('Failed to create test logs');
+    }
+  } catch (error) {
+    console.error('Error creating test logs:', error);
+    alert('Error creating test logs');
+  }
+};
 
 function AuditLogs() {
   const [logs, setLogs] = useState([])
@@ -21,58 +57,44 @@ function AuditLogs() {
   })
   const [selectedAction, setSelectedAction] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
+  const [selectedResourceType, setSelectedResourceType] = useState("all")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [statistics, setStatistics] = useState({})
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+  const [pageSize, setPageSize] = useState(20)
 
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        setLoading(true)
+        setError("")
         
-        // Mock data
-        const mockLogs = [
-    {
-      id: 1,
-      timestamp: "2024-03-20T10:30:00",
-      user: "John Doe",
-      action: "login",
-      details: "User logged in successfully",
-      status: "success",
-      ipAddress: "192.168.1.1",
-    },
-    {
-      id: 2,
-      timestamp: "2024-03-20T10:35:00",
-      user: "Jane Smith",
-      action: "create_course",
-      details: "Created new course 'Introduction to Programming'",
-      status: "success",
-      ipAddress: "192.168.1.2",
-    },
-    {
-      id: 3,
-      timestamp: "2024-03-20T10:40:00",
-      user: "Admin User",
-      action: "delete_user",
-      details: "Failed to delete user account",
-      status: "error",
-      ipAddress: "192.168.1.3",
-    },
-    {
-      id: 4,
-      timestamp: "2024-03-20T10:45:00",
-      user: "System",
-      action: "backup",
-      details: "System backup completed",
-      status: "info",
-      ipAddress: "192.168.1.4",
-    },
-  ]
+        // Fetch logs with filters
+        const filters = {}
+        if (searchQuery) filters.searchTerm = searchQuery
+        if (selectedAction !== "all") filters.action = selectedAction
+        if (selectedStatus !== "all") filters.status = selectedStatus
+        if (selectedResourceType !== "all") filters.resourceType = selectedResourceType
+        if (dateRange.start) filters.startDate = new Date(dateRange.start).toISOString()
+        if (dateRange.end) filters.endDate = new Date(dateRange.end).toISOString()
         
-        setLogs(mockLogs)
-        setFilteredLogs(mockLogs)
+        const response = await getAuditLogsWithFilters(filters, currentPage, pageSize)
+        const logsData = response.data
+        
+        setLogs(logsData.content || [])
+        setFilteredLogs(logsData.content || [])
+        setTotalPages(logsData.totalPages || 0)
+        setTotalElements(logsData.totalElements || 0)
+        
+        // Fetch statistics
+        const statsResponse = await getLogStatistics()
+        setStatistics(statsResponse.data || {})
+        
       } catch (error) {
+        console.error('Error fetching audit logs:', error)
         setError("Failed to load audit logs. Please try again.")
       } finally {
         setLoading(false)
@@ -80,75 +102,54 @@ function AuditLogs() {
     }
 
     fetchLogs()
-  }, [])
+  }, [currentPage, pageSize, searchQuery, selectedAction, selectedStatus, selectedResourceType, dateRange])
 
-  useEffect(() => {
-    // Filter logs based on search query and filters
-    const filtered = logs.filter((log) => {
-      const matchesSearch = 
-        log.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.details.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.action.toLowerCase().includes(searchQuery.toLowerCase())
-      
-      const matchesAction = selectedAction === "all" || log.action === selectedAction
-      const matchesStatus = selectedStatus === "all" || log.status === selectedStatus
-      
-      const logDate = new Date(log.timestamp)
-      const startDate = dateRange.start ? new Date(dateRange.start) : null
-      const endDate = dateRange.end ? new Date(dateRange.end) : null
-      
-      const matchesDateRange = 
-        (!startDate || logDate >= startDate) &&
-        (!endDate || logDate <= endDate)
-      
-      return matchesSearch && matchesAction && matchesStatus && matchesDateRange
-    })
-    
-    setFilteredLogs(filtered)
-  }, [searchQuery, dateRange, selectedAction, selectedStatus, logs])
+  // Remove the old filtering useEffect since we're now filtering on the backend
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case "success":
+  // Use utility functions from API
+  const getStatusIconComponent = (status) => {
+    const iconName = getStatusIcon(status)
+    switch (iconName) {
+      case "check-circle":
         return faCheckCircle
-      case "error":
+      case "exclamation-triangle":
         return faExclamationTriangle
-      case "info":
+      case "exclamation-circle":
+        return faExclamationCircle
+      case "information-circle":
         return faInfoCircle
       default:
         return faInfoCircle
-    }
-  }
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "success":
-        return "text-green-500"
-      case "error":
-        return "text-red-500"
-      case "info":
-        return "text-blue-500"
-      default:
-        return "text-gray-500"
     }
   }
 
   const handleExport = async () => {
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const filters = {}
+      if (searchQuery) filters.searchTerm = searchQuery
+      if (selectedAction !== "all") filters.action = selectedAction
+      if (selectedStatus !== "all") filters.status = selectedStatus
+      if (selectedResourceType !== "all") filters.resourceType = selectedResourceType
+      if (dateRange.start) filters.startDate = new Date(dateRange.start).toISOString()
+      if (dateRange.end) filters.endDate = new Date(dateRange.end).toISOString()
       
-      // Mock download
-      const link = document.createElement("a")
-      link.href = "#"
-      link.download = `audit_logs_${new Date().toISOString()}.csv`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      await downloadAuditLogs(filters)
     } catch (error) {
+      console.error('Error exporting logs:', error)
       setError("Failed to export logs. Please try again.")
     }
   }
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage)
+  }
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize)
+    setCurrentPage(0) // Reset to first page when changing page size
+  }
+
+
 
   if (loading) {
     return (
@@ -162,6 +163,14 @@ function AuditLogs() {
     <div className="container mx-auto px-4 py-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Audit Logs</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={createTestAuditLogs}
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors duration-200 flex items-center"
+          >
+            <FontAwesomeIcon icon={faChartBar} className="mr-2" />
+            Create Test Data
+          </button>
           <button
             onClick={handleExport}
             className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors duration-200 flex items-center"
@@ -170,10 +179,11 @@ function AuditLogs() {
             Export Logs
           </button>
         </div>
+        </div>
 
       {/* Search and Filters */}
       <div className="bg-white rounded-xl shadow-md p-4 sm:p-6 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Search Bar */}
             <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -212,10 +222,32 @@ function AuditLogs() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
               >
                 <option value="all">All Actions</option>
-                <option value="login">Login</option>
-                <option value="create_course">Create Course</option>
-                <option value="delete_user">Delete User</option>
-              <option value="backup">Backup</option>
+              <option value="LOGIN">Login</option>
+              <option value="LOGOUT">Logout</option>
+              <option value="CREATE_USER">Create User</option>
+              <option value="UPDATE_USER">Update User</option>
+              <option value="DELETE_USER">Delete User</option>
+              <option value="CREATE_COURSE">Create Course</option>
+              <option value="UPDATE_COURSE">Update Course</option>
+              <option value="DELETE_COURSE">Delete Course</option>
+              <option value="CREATE_ASSIGNMENT">Create Assignment</option>
+              <option value="UPDATE_ASSIGNMENT">Update Assignment</option>
+              <option value="DELETE_ASSIGNMENT">Delete Assignment</option>
+              <option value="CREATE_QUIZ">Create Quiz</option>
+              <option value="UPDATE_QUIZ">Update Quiz</option>
+              <option value="DELETE_QUIZ">Delete Quiz</option>
+              <option value="SUBMIT_ASSIGNMENT">Submit Assignment</option>
+              <option value="GRADE_ASSIGNMENT">Grade Assignment</option>
+              <option value="TAKE_QUIZ">Take Quiz</option>
+              <option value="GRADE_QUIZ">Grade Quiz</option>
+              <option value="ENROLL_COURSE">Enroll Course</option>
+              <option value="UNENROLL_COURSE">Unenroll Course</option>
+              <option value="UPLOAD_FILE">Upload File</option>
+              <option value="DELETE_FILE">Delete File</option>
+              <option value="SYSTEM_BACKUP">System Backup</option>
+              <option value="SYSTEM_RESTORE">System Restore</option>
+              <option value="PASSWORD_CHANGE">Password Change</option>
+              <option value="PROFILE_UPDATE">Profile Update</option>
             </select>
           </div>
 
@@ -227,10 +259,79 @@ function AuditLogs() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
             >
               <option value="all">All Status</option>
-              <option value="success">Success</option>
-              <option value="error">Error</option>
-              <option value="info">Info</option>
+              <option value="SUCCESS">Success</option>
+              <option value="ERROR">Error</option>
+              <option value="WARNING">Warning</option>
+              <option value="INFO">Info</option>
+            </select>
+          </div>
+
+          {/* Resource Type Filter */}
+          <div>
+            <select
+              value={selectedResourceType}
+              onChange={(e) => setSelectedResourceType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+            >
+              <option value="all">All Resources</option>
+              <option value="USER">User</option>
+              <option value="COURSE">Course</option>
+              <option value="ASSIGNMENT">Assignment</option>
+              <option value="QUIZ">Quiz</option>
+              <option value="FILE">File</option>
+              <option value="SYSTEM">System</option>
               </select>
+            </div>
+          </div>
+        </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+        <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-blue-500">
+          <div className="flex items-center">
+            <div className="p-3 rounded-full bg-blue-500 bg-opacity-10 text-blue-500">
+              <FontAwesomeIcon icon={faChartBar} className="h-6 w-6" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Total Logs</p>
+              <p className="text-2xl font-bold text-gray-900">{statistics.totalLogs || 0}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-green-500">
+          <div className="flex items-center">
+            <div className="p-3 rounded-full bg-green-500 bg-opacity-10 text-green-500">
+              <FontAwesomeIcon icon={faClock} className="h-6 w-6" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Recent (24h)</p>
+              <p className="text-2xl font-bold text-gray-900">{statistics.recentLogsCount || 0}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-red-500">
+          <div className="flex items-center">
+            <div className="p-3 rounded-full bg-red-500 bg-opacity-10 text-red-500">
+              <FontAwesomeIcon icon={faExclamationTriangle} className="h-6 w-6" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Errors</p>
+              <p className="text-2xl font-bold text-gray-900">{statistics.errorLogsCount || 0}</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl shadow-md p-6 border-t-4 border-yellow-500">
+          <div className="flex items-center">
+            <div className="p-3 rounded-full bg-yellow-500 bg-opacity-10 text-yellow-500">
+              <FontAwesomeIcon icon={faExclamationCircle} className="h-6 w-6" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium text-gray-500">Failed Requests</p>
+              <p className="text-2xl font-bold text-gray-900">{statistics.failedRequestsCount || 0}</p>
+            </div>
             </div>
           </div>
         </div>
@@ -265,7 +366,7 @@ function AuditLogs() {
               {filteredLogs.map((log) => (
                 <tr key={log.id}>
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(log.timestamp).toLocaleString()}
+                    {formatTimestamp(log.timestamp)}
                   </td>
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -273,26 +374,46 @@ function AuditLogs() {
                         <FontAwesomeIcon icon={faUser} className="h-4 w-4" />
                       </div>
                       <div className="ml-3">
-                        <div className="text-sm font-medium text-gray-900">{log.user}</div>
+                        <div className="text-sm font-medium text-gray-900">{log.username}</div>
+                        {log.userId && (
+                          <div className="text-xs text-gray-500">ID: {log.userId}</div>
+                        )}
                       </div>
                     </div>
                   </td>
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-primary bg-opacity-10 text-primary">
-                      {log.action}
+                      {getActionDisplay(log.action)}
                     </span>
                   </td>
                   <td className="px-4 sm:px-6 py-4 text-sm text-gray-500">
-                    {log.details}
+                    <div>
+                      <div>{log.details}</div>
+                      {log.resourceType && log.resourceId && (
+                        <div className="text-xs text-gray-400 mt-1">
+                          {log.resourceType}: {log.resourceId}
+                        </div>
+                      )}
+                      {log.executionTime && (
+                        <div className="text-xs text-gray-400">
+                          Duration: {formatDuration(log.executionTime)}
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                     <span className={`flex items-center ${getStatusColor(log.status)}`}>
-                      <FontAwesomeIcon icon={getStatusIcon(log.status)} className="mr-2" />
+                      <FontAwesomeIcon icon={getStatusIconComponent(log.status)} className="mr-2" />
                         {log.status}
                       </span>
                   </td>
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {log.ipAddress}
+                    <div>
+                      <div>{log.ipAddress || 'N/A'}</div>
+                      {log.requestMethod && (
+                        <div className="text-xs text-gray-400">{log.requestMethod}</div>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -300,6 +421,67 @@ function AuditLogs() {
           </table>
         </div>
           </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="bg-white rounded-xl shadow-md p-4 mt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-gray-700">
+                Showing {currentPage * pageSize + 1} to {Math.min((currentPage + 1) * pageSize, totalElements)} of {totalElements} results
+              </span>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <select
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(parseInt(e.target.value))}
+                className="px-3 py-1 border border-gray-300 rounded-md text-sm"
+              >
+                <option value={10}>10 per page</option>
+                <option value={20}>20 per page</option>
+                <option value={50}>50 per page</option>
+                <option value={100}>100 per page</option>
+              </select>
+              
+              <div className="flex items-center space-x-1">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 0}
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Previous
+                </button>
+                
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  const pageNum = Math.max(0, Math.min(totalPages - 5, currentPage - 2)) + i;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`px-3 py-1 border rounded-md text-sm ${
+                        currentPage === pageNum
+                          ? 'bg-primary text-white border-primary'
+                          : 'border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNum + 1}
+                    </button>
+                  );
+                })}
+                
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages - 1}
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mt-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">

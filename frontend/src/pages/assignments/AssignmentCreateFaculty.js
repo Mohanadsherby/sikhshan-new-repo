@@ -20,6 +20,7 @@ function AssignmentCreateFaculty() {
         dueDate: '',
         dueTime: '',
         courseId: '',
+        totalPoints: 100,
         status: 'ACTIVE'
     });
 
@@ -75,11 +76,24 @@ function AssignmentCreateFaculty() {
         setError("");
         
         try {
-            const response = await createAssignment(formData);
+            // Combine due date and time into a single datetime string
+            const dueDateTime = formData.dueDate && formData.dueTime 
+                ? `${formData.dueDate}T${formData.dueTime}:00`
+                : formData.dueDate;
+            
+            const assignmentData = {
+                ...formData,
+                dueDate: dueDateTime
+            };
+            
+            console.log('Sending assignment data:', assignmentData);
+            
+            const response = await createAssignment(assignmentData);
             navigate('/faculty/assignments', { 
                 state: { success: "Assignment created successfully!" } 
             });
         } catch (err) {
+            console.error('Assignment creation error:', err);
             setError("Failed to create assignment. " + (err.response?.data || err.message));
         } finally {
             setSubmitting(false);
