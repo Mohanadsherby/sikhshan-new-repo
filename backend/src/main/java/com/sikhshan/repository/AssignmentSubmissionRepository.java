@@ -28,4 +28,6 @@ public interface AssignmentSubmissionRepository extends JpaRepository<Assignment
     
     @Query("SELECT s FROM AssignmentSubmission s WHERE s.student.id = :studentId AND s.assignment.course.id = :courseId")
     List<AssignmentSubmission> findByStudentIdAndCourseId(@Param("studentId") Long studentId, @Param("courseId") Long courseId);
+    
+    Optional<AssignmentSubmission> findByAssignmentAndStudent(com.sikhshan.model.Assignment assignment, com.sikhshan.model.User student);
 } 

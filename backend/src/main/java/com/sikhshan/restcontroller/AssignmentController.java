@@ -10,6 +10,7 @@ import com.sikhshan.repository.AssignmentRepository;
 import com.sikhshan.repository.CourseRepository;
 import com.sikhshan.repository.AssignmentSubmissionRepository;
 import com.sikhshan.service.CloudinaryService;
+import com.sikhshan.service.JwtService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +36,9 @@ public class AssignmentController {
     private AssignmentSubmissionRepository submissionRepository;
     @Autowired
     private CloudinaryService cloudinaryService;
+    
+    @Autowired
+    private JwtService jwtService;
 
     private AssignmentResponse toResponse(Assignment assignment) {
         AssignmentResponse resp = new AssignmentResponse();
@@ -76,11 +80,19 @@ public class AssignmentController {
 
     // Create assignment
     @PostMapping
-    public ResponseEntity<?> createAssignment(@RequestBody AssignmentRequest request) {
+    public ResponseEntity<?> createAssignment(@RequestBody AssignmentRequest request, @RequestHeader("Authorization") String token) {
         try {
+            // Extract user ID from JWT token
+            Long userId = jwtService.extractUserId(token.substring(7)); // Remove "Bearer " prefix
+            
             Optional<Course> courseOpt = courseRepository.findById(request.getCourseId());
             if (courseOpt.isEmpty()) {
                 return ResponseEntity.badRequest().body("Invalid course ID");
+            }
+            
+            // Verify that the user is the instructor of the course
+            if (!courseOpt.get().getInstructor().getId().equals(userId)) {
+                return ResponseEntity.badRequest().body("You can only create assignments for your own courses");
             }
             
             Assignment assignment = new Assignment();
@@ -200,11 +212,19 @@ public class AssignmentController {
 
     // Update assignment
     @PutMapping("/{id}")
-    public ResponseEntity<?> updateAssignment(@PathVariable Long id, @RequestBody AssignmentRequest request) {
+    public ResponseEntity<?> updateAssignment(@PathVariable Long id, @RequestBody AssignmentRequest request, @RequestHeader("Authorization") String token) {
         try {
+            // Extract user ID from JWT token
+            Long userId = jwtService.extractUserId(token.substring(7)); // Remove "Bearer " prefix
+            
             Optional<Assignment> assignmentOpt = assignmentRepository.findById(id);
             if (assignmentOpt.isEmpty()) {
                 return ResponseEntity.notFound().build();
+            }
+            
+            // Verify that the user is the instructor of the assignment
+            if (!assignmentOpt.get().getInstructor().getId().equals(userId)) {
+                return ResponseEntity.badRequest().body("You can only update your own assignments");
             }
             
             Assignment assignment = assignmentOpt.get();
@@ -269,11 +289,19 @@ public class AssignmentController {
 
     // Delete assignment
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteAssignment(@PathVariable Long id) {
+    public ResponseEntity<?> deleteAssignment(@PathVariable Long id, @RequestHeader("Authorization") String token) {
         try {
+            // Extract user ID from JWT token
+            Long userId = jwtService.extractUserId(token.substring(7)); // Remove "Bearer " prefix
+            
             Optional<Assignment> assignmentOpt = assignmentRepository.findById(id);
             if (assignmentOpt.isEmpty()) {
                 return ResponseEntity.notFound().build();
+            }
+            
+            // Verify that the user is the instructor of the assignment
+            if (!assignmentOpt.get().getInstructor().getId().equals(userId)) {
+                return ResponseEntity.badRequest().body("You can only delete your own assignments");
             }
             
             Assignment assignment = assignmentOpt.get();
