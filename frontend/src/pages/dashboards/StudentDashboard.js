@@ -262,35 +262,35 @@ function StudentDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         {enrolledCourses.length > 0 ? (
           enrolledCourses.map((course) => (
-            <div
-              key={course.id}
-              className="bg-white rounded-xl shadow-md overflow-hidden transition-transform duration-300 hover:shadow-lg hover:-translate-y-1"
-            >
+          <div
+            key={course.id}
+            className="bg-white rounded-xl shadow-md overflow-hidden transition-transform duration-300 hover:shadow-lg hover:-translate-y-1"
+          >
               <div className="h-40 bg-cover bg-center" style={{ 
                 backgroundImage: course.imageUrl 
                   ? `url(${course.imageUrl})` 
                   : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
               }}>
-                <div className="h-full w-full bg-black bg-opacity-30 flex items-end p-4">
-                  <div>
-                    <h3 className="text-lg font-bold text-white mb-1">{course.name}</h3>
-                    <p className="text-sm text-white text-opacity-80">{course.code}</p>
+              <div className="h-full w-full bg-black bg-opacity-30 flex items-end p-4">
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-1">{course.name}</h3>
+                  <p className="text-sm text-white text-opacity-80">{course.code}</p>
                                          <p className="text-sm text-white mt-2">Instructor: <span className="font-semibold">{course.instructor || 'N/A'}</span></p>
                   </div>
-                </div>
-              </div>
-              <div className="p-4">
-                                 <p className="text-sm text-gray-600">Instructor: {course.instructor || 'N/A'}</p>
-                <div className="mt-4">
-                  <Link
-                    to={`/student/courses/${course.id}`}
-                    className="block w-full text-center py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors duration-200"
-                  >
-                    View Course
-                  </Link>
-                </div>
               </div>
             </div>
+            <div className="p-4">
+                                 <p className="text-sm text-gray-600">Instructor: {course.instructor || 'N/A'}</p>
+              <div className="mt-4">
+                <Link
+                  to={`/student/courses/${course.id}`}
+                  className="block w-full text-center py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors duration-200"
+                >
+                  View Course
+                </Link>
+              </div>
+            </div>
+          </div>
           ))
         ) : (
           <div className="col-span-full text-center py-8">
@@ -320,13 +320,13 @@ function StudentDashboard() {
           <div className="space-y-4">
             {upcomingAssignments.length > 0 ? (
               upcomingAssignments.map((assignment) => (
-                <div key={assignment.id} className="border-b border-gray-200 pb-4">
-                  <div className="flex justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{assignment.title}</p>
-                      <p className="text-xs text-gray-500 mt-1">
+              <div key={assignment.id} className="border-b border-gray-200 pb-4">
+                <div className="flex justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{assignment.title}</p>
+                    <p className="text-xs text-gray-500 mt-1">
                         {assignment.courseCode} • {formatDueDate(assignment.dueDate)}
-                      </p>
+                    </p>
                     </div>
                     <span className="text-xs px-2 py-1 rounded-full flex items-center justify-center bg-yellow-100 text-yellow-800">
                       Active
@@ -354,18 +354,18 @@ function StudentDashboard() {
           <div className="space-y-4">
             {upcomingQuizzes.length > 0 ? (
               upcomingQuizzes.map((quiz) => (
-                <div key={quiz.id} className="border-b border-gray-200 pb-4">
-                  <p className="text-sm font-medium text-gray-900">{quiz.title}</p>
+              <div key={quiz.id} className="border-b border-gray-200 pb-4">
+                <p className="text-sm font-medium text-gray-900">{quiz.title}</p>
                   <p className="text-xs text-gray-500 mt-1">{quiz.courseCode}</p>
-                  <div className="flex items-center mt-2">
-                    <span className="text-xs bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-full mr-2">
+                <div className="flex items-center mt-2">
+                  <span className="text-xs bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-full mr-2">
                       {formatQuizDate(quiz.startTime)}
-                    </span>
-                    <span className="text-xs bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-full">
+                  </span>
+                  <span className="text-xs bg-primary bg-opacity-10 text-primary px-2 py-1 rounded-full">
                       {formatQuizTime(quiz.startTime)}
-                    </span>
-                  </div>
+                  </span>
                 </div>
+              </div>
               ))
             ) : (
               <p className="text-gray-500 text-sm">No upcoming quizzes.</p>

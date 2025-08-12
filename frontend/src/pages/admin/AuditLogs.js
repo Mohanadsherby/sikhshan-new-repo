@@ -332,9 +332,9 @@ function AuditLogs() {
               <p className="text-sm font-medium text-gray-500">Failed Requests</p>
               <p className="text-2xl font-bold text-gray-900">{statistics.failedRequestsCount || 0}</p>
             </div>
+            </div>
           </div>
         </div>
-      </div>
 
         {/* Logs Table */}
       <div className="bg-white rounded-xl shadow-md overflow-hidden">
