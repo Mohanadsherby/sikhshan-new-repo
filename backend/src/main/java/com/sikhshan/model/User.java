@@ -58,7 +58,7 @@ public class User {
     @Column(length = 255)
     private String cloudinaryUrl;
 
-	public long getId() {
+	public Long getId() {
 		return id;
 	}
 
